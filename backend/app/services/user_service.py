@@ -147,3 +147,4 @@ def dev_create_or_get_user(db: Session, payload: DevLoginRequest) -> User:
     db.commit()
     db.refresh(user)
     return user
+

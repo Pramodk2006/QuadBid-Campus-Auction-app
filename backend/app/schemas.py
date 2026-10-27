@@ -204,7 +204,7 @@ class ListingUpdate(BaseModel):
 
 
 class ListingRead(BaseModel):
-    """Full listing detail — includes seller display name."""
+    """Full listing detail — includes seller display name and live bidding status."""
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -217,6 +217,10 @@ class ListingRead(BaseModel):
     photos: list[str]
     starting_price: float       # in ₹
     min_bid_increment: float    # in ₹
+    current_price: float        # in ₹ (starting_price or highest bid)
+    min_next_bid: float         # in ₹ (starting_price if 0 bids, else current_price + increment)
+    bid_count: int
+    leading_bidder_display_name: Optional[str] = None
     closes_at: datetime
     status: str
     created_at: datetime
@@ -235,6 +239,53 @@ class ListingListItem(BaseModel):
     photos: list[str]
     starting_price: float
     min_bid_increment: float
+    current_price: float
+    bid_count: int
     closes_at: datetime
     status: str
     created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# Bid schemas
+# ---------------------------------------------------------------------------
+
+class BidCreate(BaseModel):
+    """Payload for POST /api/listings/{id}/bids"""
+    amount: float = Field(ge=1.0, le=10_000_000.0, description="Bid amount in ₹")
+
+
+class BidRead(BaseModel):
+    """Public bid history item."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    listing_id: int
+    bidder_id: int
+    bidder_display_name: str     # "Pramod K (23ALR070)"
+    amount: float                # in ₹
+    created_at: datetime
+
+
+class AuctionLeader(BaseModel):
+    """Current leading status of an auction."""
+    listing_id: int
+    status: str
+    has_bids: bool
+    current_price: float         # in ₹
+    min_next_bid: float          # in ₹
+    bid_count: int
+    leading_bidder_id: Optional[int] = None
+    leading_bidder_display_name: Optional[str] = None
+    leading_bid_time: Optional[datetime] = None
+    closes_at: datetime
+    is_closed: bool
+
+
+class BidPlacementResult(BaseModel):
+    """Response returned when a bid is successfully placed."""
+    bid: BidRead
+    extended: bool
+    new_closes_at: datetime
+    message: str
+

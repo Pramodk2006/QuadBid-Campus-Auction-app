@@ -288,3 +288,4 @@ def dev_login(payload: DevLoginRequest, db: Session = Depends(get_db)):
         access_token=access_token,
         user=UserRead.model_validate(user),
     )
+

@@ -184,3 +184,4 @@ def get_current_user_optional(
         return get_current_user.__wrapped__(credentials, db)
     except HTTPException:
         return None
+

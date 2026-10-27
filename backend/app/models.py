@@ -79,6 +79,7 @@ class User(Base):
 
     # Relationships (defined here; back-populated in child models)
     listings: Mapped[list["Listing"]] = relationship("Listing", back_populates="seller")
+    bids: Mapped[list["Bid"]] = relationship("Bid", back_populates="bidder")
 
     # ── Computed property ──────────────────────────────────────────────────
 
@@ -141,3 +142,38 @@ class Listing(Base):
 
     # ORM relationship: listing.seller gives the full User object
     seller: Mapped["User"] = relationship("User", back_populates="listings")
+    bids: Mapped[list["Bid"]] = relationship(
+        "Bid", back_populates="listing", order_by="desc(Bid.created_at)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Bid
+# ---------------------------------------------------------------------------
+
+class Bid(Base):
+    __tablename__ = "bids"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+
+    listing_id: Mapped[int] = mapped_column(
+        ForeignKey("listings.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    bidder_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True, nullable=False
+    )
+
+    # Money stored in integer PAISE
+    amount_paise: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    # ORM relationships
+    listing: Mapped["Listing"] = relationship("Listing", back_populates="bids")
+    bidder: Mapped["User"] = relationship("User", back_populates="bids")
+
+    def __repr__(self) -> str:
+        return f"<Bid id={self.id} listing={self.listing_id} bidder={self.bidder_id} amount_paise={self.amount_paise}>"
+

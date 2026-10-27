@@ -231,3 +231,4 @@ class TestAuthProtection:
         from .conftest import VALID_LISTING
         lid = auth_client.post("/api/listings", json=VALID_LISTING).json()["id"]
         assert client.get(f"/api/listings/{lid}").status_code == 200
+

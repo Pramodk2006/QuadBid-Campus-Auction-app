@@ -11,10 +11,10 @@ Changes from Phase 1A:
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from ..models import Listing, User
+from ..models import Bid, Listing, User
 from ..schemas import ListingCreate, ListingUpdate
 
 
@@ -36,15 +36,33 @@ def paise_to_rupees(paise: int) -> float:
 
 def _enrich(listing: Listing, db: Session) -> dict:
     """
-    Build a response dict from a Listing ORM object.
-
-    Why fetch the seller here instead of using listing.seller directly?
-    SQLAlchemy lazy-loads relationships by default. If the session that loaded
-    the listing is already closed, accessing listing.seller raises DetachedInstanceError.
-    Fetching explicitly by ID is safe regardless of session state.
+    Build a response dict from a Listing ORM object including live bidding stats.
     """
     seller = db.get(User, listing.seller_id)
     seller_display_name = seller.display_name if seller else f"User #{listing.seller_id}"
+
+    # Fetch top bid
+    top_bid_stmt = (
+        select(Bid)
+        .where(Bid.listing_id == listing.id)
+        .order_by(Bid.amount_paise.desc(), Bid.created_at.asc())
+        .limit(1)
+    )
+    top_bid = db.execute(top_bid_stmt).scalar_one_or_none()
+
+    # Count bids
+    count_stmt = select(func.count(Bid.id)).where(Bid.listing_id == listing.id)
+    bid_count = db.execute(count_stmt).scalar_one()
+
+    if top_bid is not None:
+        leading_bidder = db.get(User, top_bid.bidder_id)
+        leading_name = leading_bidder.display_name if leading_bidder else f"User #{top_bid.bidder_id}"
+        current_price = paise_to_rupees(top_bid.amount_paise)
+        min_next_bid = paise_to_rupees(top_bid.amount_paise + listing.min_bid_increment_paise)
+    else:
+        leading_name = None
+        current_price = paise_to_rupees(listing.starting_price_paise)
+        min_next_bid = current_price
 
     return {
         "id": listing.id,
@@ -57,6 +75,10 @@ def _enrich(listing: Listing, db: Session) -> dict:
         "photos": listing.photos or [],
         "starting_price": paise_to_rupees(listing.starting_price_paise),
         "min_bid_increment": paise_to_rupees(listing.min_bid_increment_paise),
+        "current_price": current_price,
+        "min_next_bid": min_next_bid,
+        "bid_count": bid_count,
+        "leading_bidder_display_name": leading_name,
         "closes_at": listing.closes_at,
         "status": listing.status,
         "created_at": listing.created_at,
@@ -162,6 +184,15 @@ def update_listing(
         raise ValueError(f"Cannot edit a listing with status '{listing.status}'")
 
     update_data = payload.model_dump(exclude_none=True)
+
+    # Check if bids exist before permitting price or increment changes
+    if "starting_price" in update_data or "min_bid_increment" in update_data:
+        bid_exists_stmt = select(Bid.id).where(Bid.listing_id == listing_id).limit(1)
+        has_bids = db.execute(bid_exists_stmt).first() is not None
+        if has_bids:
+            raise ValueError(
+                "Cannot change starting price or bid increment after bidding has commenced"
+            )
 
     if "starting_price" in update_data:
         listing.starting_price_paise = rupees_to_paise(update_data.pop("starting_price"))

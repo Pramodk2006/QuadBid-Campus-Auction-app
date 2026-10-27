@@ -18,6 +18,7 @@ from app.database import Base
 from app.main import app
 from app.api.listings import get_db
 from app.api.auth import get_db as auth_get_db
+from app.api.bids import get_db as bids_get_db
 from app.core.security import _get_db_for_auth
 
 # Separate test database — never touches the dev DB
@@ -55,6 +56,7 @@ def client():
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[auth_get_db] = override_get_db
+    app.dependency_overrides[bids_get_db] = override_get_db
     app.dependency_overrides[_get_db_for_auth] = override_get_db
 
     with TestClient(app) as c:
@@ -71,6 +73,7 @@ def _make_client_with_overrides():
 
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[auth_get_db] = override_get_db
+    app.dependency_overrides[bids_get_db] = override_get_db
     app.dependency_overrides[_get_db_for_auth] = override_get_db
     return TestClient(app)
 
@@ -105,6 +108,20 @@ def auth_client_2():
     app.dependency_overrides.clear()
 
 
+@pytest.fixture
+def auth_client_3():
+    """
+    TestClient with a valid JWT token for User 3 (Karthik M, 22ITR012).
+    """
+    tc = _make_client_with_overrides()
+    resp = tc.post("/api/auth/dev-login", json=USER_3)
+    assert resp.status_code == 201, f"dev-login failed: {resp.text}"
+    token = resp.json()["access_token"]
+    tc.headers["Authorization"] = f"Bearer {token}"
+    yield tc
+    app.dependency_overrides.clear()
+
+
 # ---------------------------------------------------------------------------
 # Test data
 # ---------------------------------------------------------------------------
@@ -125,6 +142,14 @@ USER_2 = {
     "roll_number": "21CSE045",
     "department": "CSE",
     "year": 4,
+}
+
+USER_3 = {
+    "email": "karthikm.22itr@kongu.edu",
+    "name": "Karthik M",
+    "roll_number": "22ITR012",
+    "department": "IT",
+    "year": 3,
 }
 
 VALID_LISTING = {
