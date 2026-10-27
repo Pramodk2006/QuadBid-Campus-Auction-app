@@ -1,23 +1,20 @@
 """
 services/listing_service.py — Pure business logic for listing management.
 
-Why a service layer separate from routes?
-  - Routes handle HTTP (request parsing, status codes, response shaping).
-  - Services handle business rules (what is allowed, how data changes).
-  - This makes business logic unit-testable without spinning up HTTP.
-  - Keeps routes thin and readable.
-
-Money conversion:
-  - rupees_to_paise(x) = round(x * 100)   → int
-  - paise_to_rupees(x) = x / 100           → float
+Changes from Phase 1A:
+  - create_listing() now takes explicit seller_id (set by the route from JWT).
+  - _enrich() now queries the seller's User record to include seller_display_name
+    ("Pramod K (23ALR070)") in every response dict.
+  - No HTTP or auth logic here — that stays in api/listings.py.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from ..models import Listing
+from ..models import Listing, User
 from ..schemas import ListingCreate, ListingUpdate
 
 
@@ -26,27 +23,33 @@ from ..schemas import ListingCreate, ListingUpdate
 # ---------------------------------------------------------------------------
 
 def rupees_to_paise(rupees: float) -> int:
-    """Convert rupee float to integer paise. Rounds to nearest paisa."""
     return round(rupees * 100)
 
 
 def paise_to_rupees(paise: int) -> float:
-    """Convert integer paise to float rupees for API responses."""
     return paise / 100
 
 
 # ---------------------------------------------------------------------------
-# Reading helpers
+# Response helper — converts ORM → dict with rupees + seller display name
 # ---------------------------------------------------------------------------
 
-def _enrich(listing: Listing) -> dict:
+def _enrich(listing: Listing, db: Session) -> dict:
     """
-    Convert a Listing ORM object to a dict with rupee prices.
-    Used internally so routes can build response models cleanly.
+    Build a response dict from a Listing ORM object.
+
+    Why fetch the seller here instead of using listing.seller directly?
+    SQLAlchemy lazy-loads relationships by default. If the session that loaded
+    the listing is already closed, accessing listing.seller raises DetachedInstanceError.
+    Fetching explicitly by ID is safe regardless of session state.
     """
+    seller = db.get(User, listing.seller_id)
+    seller_display_name = seller.display_name if seller else f"User #{listing.seller_id}"
+
     return {
         "id": listing.id,
         "seller_id": listing.seller_id,
+        "seller_display_name": seller_display_name,
         "title": listing.title,
         "category": listing.category,
         "description": listing.description,
@@ -65,13 +68,13 @@ def _enrich(listing: Listing) -> dict:
 # CRUD operations
 # ---------------------------------------------------------------------------
 
-def create_listing(db: Session, payload: ListingCreate) -> dict:
+def create_listing(db: Session, payload: ListingCreate, seller_id: int) -> dict:
     """
     Persist a new listing.
-    Converts rupee inputs to paise before storage.
+    seller_id is provided by the route handler (extracted from JWT token).
     """
     listing = Listing(
-        seller_id=payload.seller_id,
+        seller_id=seller_id,
         title=payload.title,
         category=payload.category,
         description=payload.description,
@@ -85,17 +88,14 @@ def create_listing(db: Session, payload: ListingCreate) -> dict:
     db.add(listing)
     db.commit()
     db.refresh(listing)
-    return _enrich(listing)
+    return _enrich(listing, db)
 
 
 def get_listing(db: Session, listing_id: int) -> Optional[dict]:
-    """
-    Fetch a single listing by ID. Returns None if not found.
-    """
     listing = db.get(Listing, listing_id)
     if listing is None:
         return None
-    return _enrich(listing)
+    return _enrich(listing, db)
 
 
 def list_listings(
@@ -104,22 +104,13 @@ def list_listings(
     keyword: Optional[str] = None,
     category: Optional[str] = None,
     condition: Optional[str] = None,
-    min_price: Optional[float] = None,   # rupees
-    max_price: Optional[float] = None,   # rupees
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
     closing_soon: bool = False,
     status: str = "active",
     skip: int = 0,
     limit: int = 50,
 ) -> list[dict]:
-    """
-    Browse listings with optional filters.
-
-    closing_soon: items whose closes_at is within the next 24 hours.
-    min/max_price: compared against starting_price_paise (converted to paise).
-    """
-    from sqlalchemy import select, or_
-    from datetime import timedelta
-
     stmt = select(Listing).where(Listing.status == status)
 
     if keyword:
@@ -151,21 +142,14 @@ def list_listings(
     stmt = stmt.order_by(Listing.closes_at.asc()).offset(skip).limit(limit)
 
     listings = db.execute(stmt).scalars().all()
-    return [_enrich(lst) for lst in listings]
+    return [_enrich(lst, db) for lst in listings]
 
 
 def update_listing(
     db: Session, listing_id: int, seller_id: int, payload: ListingUpdate
 ) -> Optional[dict]:
     """
-    Edit an active listing.
-    Business rules:
-      - Only the seller can edit their own listing (seller_id check).
-      - Only 'active' listings can be edited (closed/cancelled are immutable).
-      - Phase 1B will add: cannot edit starting_price if bids exist.
-
-    Returns updated dict, or None if listing not found.
-    Raises ValueError for authorization/state violations.
+    Edit an active listing. Only the owning seller can edit.
     """
     listing = db.get(Listing, listing_id)
     if listing is None:
@@ -177,16 +161,13 @@ def update_listing(
     if listing.status != "active":
         raise ValueError(f"Cannot edit a listing with status '{listing.status}'")
 
-    # Apply only the fields the client sent (partial update)
     update_data = payload.model_dump(exclude_none=True)
 
     if "starting_price" in update_data:
         listing.starting_price_paise = rupees_to_paise(update_data.pop("starting_price"))
 
     if "min_bid_increment" in update_data:
-        listing.min_bid_increment_paise = rupees_to_paise(
-            update_data.pop("min_bid_increment")
-        )
+        listing.min_bid_increment_paise = rupees_to_paise(update_data.pop("min_bid_increment"))
 
     for field, value in update_data.items():
         setattr(listing, field, value)
@@ -194,16 +175,12 @@ def update_listing(
     listing.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(listing)
-    return _enrich(listing)
+    return _enrich(listing, db)
 
 
 def cancel_listing(db: Session, listing_id: int, seller_id: int) -> Optional[dict]:
     """
-    Soft-cancel a listing (sets status='cancelled').
-    Hard-delete is never used — preserves audit trail.
-
-    Returns updated dict, or None if not found.
-    Raises PermissionError or ValueError for invalid actions.
+    Soft-cancel a listing. Only the owning seller can cancel.
     """
     listing = db.get(Listing, listing_id)
     if listing is None:
@@ -222,4 +199,4 @@ def cancel_listing(db: Session, listing_id: int, seller_id: int) -> Optional[dic
     listing.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(listing)
-    return _enrich(listing)
+    return _enrich(listing, db)

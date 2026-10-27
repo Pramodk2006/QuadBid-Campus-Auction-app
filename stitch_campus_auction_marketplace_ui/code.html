@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>QuadBid - Live Campus Handover Auctions</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "error": "#ff6b6b",
+          "secondary-fixed": "#c0d8e8",
+          "surface-container-low": "#111828",
+          "surface-container": "#141c2e",
+          "secondary-fixed-dim": "#88b4cc",
+          "on-surface": "#e0e8f0",
+          "error-container": "#3d1414",
+          "on-tertiary-fixed": "#1a002e",
+          "on-primary-container": "#c8eaff",
+          "surface-variant": "#1a2438",
+          "on-tertiary-container": "#e8d0ff",
+          "outline-variant": "#2a3a48",
+          "on-primary-fixed-variant": "#004d73",
+          "on-tertiary": "#1a002e",
+          "tertiary-container": "#3d2060",
+          "on-error": "#1a0000",
+          "surface-container-high": "#1a2438",
+          "surface-tint": "#7dd3fc",
+          "on-secondary-container": "#c0d8e8",
+          "outline": "#4a6070",
+          "on-surface-variant": "#a0b4c4",
+          "background": "#0a0e1a",
+          "primary": "#7dd3fc",
+          "tertiary-fixed-dim": "#c8a0f0",
+          "on-error-container": "#ffb3b3",
+          "surface-dim": "#0f1524",
+          "on-secondary-fixed-variant": "#2a4a5e",
+          "on-primary": "#001f2e",
+          "tertiary-fixed": "#e8d0ff",
+          "inverse-primary": "#0a4c6e",
+          "surface-bright": "#1a2438",
+          "on-tertiary-fixed-variant": "#4d2a73",
+          "surface-container-highest": "#202c42",
+          "surface": "#0f1524",
+          "secondary": "#88b4cc",
+          "on-secondary": "#001f2e",
+          "tertiary": "#c8a0f0",
+          "on-primary-fixed": "#001f2e",
+          "primary-fixed": "#c8eaff",
+          "primary-fixed-dim": "#7dd3fc",
+          "secondary-container": "#1a3a4e",
+          "inverse-on-surface": "#0a0e1a",
+          "primary-container": "#0e4d6e",
+          "on-background": "#e0e8f0",
+          "on-secondary-fixed": "#0d1f2b",
+          "surface-container-lowest": "#0a0e1a",
+          "inverse-surface": "#e0e8f0"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.5rem",
+          "lg": "1rem",
+          "xl": "1.5rem",
+          "full": "9999px"
+        },
+        "fontFamily": {
+          "sans": ["Inter", "sans-serif"],
+          "headline": ["Inter", "sans-serif"],
+          "display": ["Inter", "sans-serif"],
+          "body": ["Inter", "sans-serif"],
+          "label": ["Inter", "sans-serif"]
+        }
+      }
+    }
+  }
+</script>
+<style>
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    display: inline-block;
+    vertical-align: middle;
+    line-height: 1;
+  }
+  @keyframes subtle-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.45; transform: scale(0.9); }
+  }
+  .live-indicator {
+    animation: subtle-pulse 2.2s infinite ease-in-out;
+  }
+</style>
+</head>
+<body class="bg-background text-on-surface font-sans antialiased min-h-screen flex flex-col selection:bg-primary selection:text-on-primary">
+<!-- HEADER / TOP NAV -->
+<header class="sticky top-0 z-50 bg-surface/85 backdrop-blur-xl border-b border-outline-variant/50">
+<div class="max-w-7xl mx-auto px-6 lg:px-8 h-20 flex items-center justify-between gap-6">
+<!-- Brand -->
+<div class="flex items-center gap-3 shrink-0">
+<div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/25 text-primary flex items-center justify-center font-bold shadow-inner">
+<span class="material-symbols-outlined text-[22px]" data-icon="gavel" style="font-variation-settings: 'FILL' 1;">gavel</span>
+</div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-xl font-bold tracking-tight text-white font-headline">QuadBid</span>
+<span class="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-surface-container-high border border-outline-variant text-[11px] font-medium text-secondary">IITD • BITS Relay</span>
+</div>
+</div>
+</div>
+<!-- Frosted Search Bar -->
+<div class="flex-1 max-w-lg hidden md:block">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-4 text-on-surface-variant text-[19px] pointer-events-none" data-icon="search">search</span>
+<input class="w-full bg-surface-container-low/80 hover:bg-surface-container-low pl-11 pr-24 py-2.5 rounded-xl text-sm text-on-surface placeholder:text-outline border border-outline-variant/60 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all" placeholder="Search cycles, calculators, textbooks..." type="text"/>
+<div class="absolute right-3">
+<span class="px-2 py-0.5 rounded-md bg-surface-variant text-[11px] text-on-surface-variant font-mono font-medium border border-outline-variant/40">Hostel 1–9</span>
+</div>
+</div>
+</div>
+<!-- Actions & Profile -->
+<div class="flex items-center gap-4 shrink-0">
+<button class="relative p-2.5 rounded-xl hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors" title="2 Live Notifications">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary live-indicator"></span>
+</button>
+<button class="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant text-on-surface text-sm font-medium transition-all">
+<span class="material-symbols-outlined text-[18px] text-primary" data-icon="add">add</span>
+<span>List Item</span>
+</button>
+<!-- Verified Student Badge -->
+<div class="flex items-center gap-3 pl-2 border-l border-outline-variant/60">
+<div class="relative">
+<img class="w-9 h-9 rounded-full object-cover ring-2 ring-primary/30" data-alt="Profile headshot of Arjun K., male senior student" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBp7A-4OH719Xr9eAW_7tvRxtAEub83eAiktf5XUI9MNsrw2BuoZElRoRuXMlUuSaAfDB9myX3Y1ttwJMqJnWAffCFcry5eJ8YMlgowP1knvQNh6Ci8du3LhnK_8iCHE8dZM9D1KeCvxq8sAF7cNoctdjOjnrxl7gJ4F9KvqdnIiYzyaL3wEUg6wdeE8T-4pkBwdJilWHqTW5Xgco9g2QFELzPQJocJftJvv04lycaP"/>
+<span class="absolute -bottom-0.5 -right-0.5 bg-primary text-on-primary rounded-full p-0.5 ring-2 ring-background">
+<span class="material-symbols-outlined text-[10px] block" data-icon="verified" style="font-variation-settings: 'FILL' 1;">verified</span>
+</span>
+</div>
+<div class="hidden xl:flex flex-col text-left text-xs">
+<div class="flex items-center gap-1.5">
+<span class="font-semibold text-white">Arjun K.</span>
+<span class="px-1.5 py-0.2 rounded bg-surface-variant text-[10px] text-on-surface-variant font-mono">H-4</span>
+</div>
+<span class="text-secondary text-[11px]">Verified Student</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Minimal Sub-Navigation Links -->
+<div class="border-t border-outline-variant/40 bg-surface-dim/40">
+<div class="max-w-7xl mx-auto px-6 lg:px-8 flex items-center justify-between overflow-x-auto no-scrollbar py-2 text-sm">
+<div class="flex items-center gap-8">
+<a class="text-primary font-medium flex items-center gap-2 py-1 border-b-2 border-primary -mb-[9px]" href="#live">
+<span class="w-1.5 h-1.5 rounded-full bg-primary live-indicator"></span>
+          Live Auctions
+        </a>
+<a class="text-on-surface-variant hover:text-white py-1 transition-colors" href="#watchlist">Watchlist &amp; Alerts</a>
+<a class="text-on-surface-variant hover:text-white py-1 transition-colors flex items-center gap-1.5" href="#concierge">
+<span class="material-symbols-outlined text-[16px] text-tertiary" data-icon="smart_toy">smart_toy</span>
+          AI Concierge
+        </a>
+<a class="text-on-surface-variant hover:text-white py-1 transition-colors" href="#seller">Seller Hub</a>
+<a class="text-on-surface-variant hover:text-white py-1 transition-colors flex items-center gap-1.5" href="#escrow">
+<span class="material-symbols-outlined text-[16px] text-secondary" data-icon="handshake">handshake</span>
+          Escrow Protection
+        </a>
+</div>
+<div class="hidden lg:flex items-center gap-2 text-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[15px] text-primary" data-icon="shield">shield</span>
+<span>Funds held until physical QR handshake</span>
+</div>
+</div>
+</div>
+</header>
+<!-- MAIN CONTENT -->
+<main class="flex-1 max-w-7xl w-full mx-auto px-6 lg:px-8 py-10 flex flex-col gap-10">
+<!-- REFINED GLACIER HERO (Clean, Calm, Spacious) -->
+<section class="relative overflow-hidden rounded-2xl bg-surface-container border border-outline-variant/60 p-8 sm:p-12 lg:p-14">
+<!-- Subtle Glacier glow background effects -->
+<div class="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-primary/10 blur-3xl pointer-events-none"></div>
+<div class="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-secondary-container/40 blur-3xl pointer-events-none"></div>
+<div class="relative z-10 max-w-3xl space-y-5">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-variant/80 border border-outline-variant text-primary text-xs font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-primary live-indicator"></span>
+<span>Senior Departure Week • 3 Days Until Hostel Checkout</span>
+</div>
+<h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight font-headline">
+        Fair bidding, anti-sniping protection, and zero waste campus handovers.
+      </h1>
+<p class="text-base sm:text-lg text-on-surface-variant font-normal leading-relaxed max-w-2xl">
+        Outgoing seniors pass lab gear, cycles, and course books directly to incoming juniors. Every bid placed within the final 60 seconds automatically extends the auction.
+      </p>
+<div class="pt-3 flex flex-wrap items-center gap-4">
+<button class="px-6 py-3 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary font-semibold text-sm flex items-center gap-2 shadow-lg shadow-primary/10 transition-all">
+<span class="material-symbols-outlined text-[18px]" data-icon="post_add">post_add</span>
+          List Item to Handover
+        </button>
+<button class="px-5 py-3 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant text-on-surface font-medium text-sm flex items-center gap-2 transition-all">
+<span class="material-symbols-outlined text-[18px] text-tertiary" data-icon="smart_toy">smart_toy</span>
+          Launch AI Assistant
+        </button>
+</div>
+</div>
+</section>
+<!-- FILTER & SORT BAR (Restrained, Spacious) -->
+<section class="space-y-4">
+<!-- Category Pills -->
+<div class="flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-1">
+<button class="px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-semibold whitespace-nowrap shadow-sm">
+        All Items (142)
+      </button>
+<button class="px-4 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/70 text-on-surface-variant hover:text-white text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]" data-icon="pedal_bike">pedal_bike</span>
+        Cycles &amp; Mobility (34)
+      </button>
+<button class="px-4 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/70 text-on-surface-variant hover:text-white text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]" data-icon="calculate">calculate</span>
+        Calculators (19)
+      </button>
+<button class="px-4 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/70 text-on-surface-variant hover:text-white text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]" data-icon="menu_book">menu_book</span>
+        Textbooks &amp; Notes (52)
+      </button>
+<button class="px-4 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/70 text-on-surface-variant hover:text-white text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]" data-icon="desktop_windows">desktop_windows</span>
+        Dorm Tech (21)
+      </button>
+<button class="px-4 py-2 rounded-xl bg-surface-container-low hover:bg-surface-container-high border border-outline-variant/70 text-on-surface-variant hover:text-white text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]" data-icon="science">science</span>
+        Lab Equipment (16)
+      </button>
+</div>
+<!-- Secondary Filters & Sort -->
+<div class="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-surface-container-low border border-outline-variant/50">
+<div class="flex flex-wrap items-center gap-2.5">
+<span class="text-[11px] font-semibold text-outline uppercase tracking-wider">Filters:</span>
+<button class="px-3 py-1.5 rounded-lg bg-error-container/40 border border-error/30 text-error hover:bg-error-container/60 text-xs font-medium flex items-center gap-1.5 transition-colors">
+<span class="material-symbols-outlined text-[14px]" data-icon="timer">timer</span>
+          Closing in &lt; 15 mins
+        </button>
+<button class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface-variant hover:text-on-surface text-xs font-medium transition-colors">
+          Under ₹500
+        </button>
+<button class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface-variant hover:text-on-surface text-xs font-medium transition-colors flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[14px] text-primary" data-icon="verified">verified</span>
+          Verified Handovers
+        </button>
+<button class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface-variant hover:text-on-surface text-xs font-medium transition-colors">
+          Condition: Mint / Good
+        </button>
+</div>
+<div class="flex items-center gap-3 ml-auto">
+<span class="text-xs text-on-surface-variant">Sort:</span>
+<div class="relative">
+<select class="bg-surface-container text-white text-xs font-medium py-1.5 pl-3 pr-8 rounded-lg border border-outline-variant focus:outline-none focus:border-primary cursor-pointer appearance-none">
+<option>Closing Soonest</option>
+<option>Most Active Bids</option>
+<option>Lowest Price</option>
+</select>
+<span class="material-symbols-outlined absolute right-2.5 top-2 text-on-surface-variant pointer-events-none text-[16px]" data-icon="expand_more">expand_more</span>
+</div>
+</div>
+</div>
+</section>
+<!-- MAIN GRID: FEED + REFINED SIDEBAR (Generous Spacing) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<!-- AUCTION LOT FEED (Col 1-8) -->
+<section class="lg:col-span-8 space-y-8">
+<!-- ITEM 1: Hero Sprint Pro Cycle (Featured Spacious Card) -->
+<div class="group rounded-2xl bg-surface-container border border-outline-variant/60 hover:border-primary/50 transition-all duration-300 overflow-hidden">
+<div class="grid grid-cols-1 md:grid-cols-12">
+<!-- Image Section -->
+<div class="md:col-span-5 relative min-h-[280px] bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="A matte black and orange Hero Sprint Pro 21-speed geared bicycle parked against a brick collegiate dormitory archway" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCR3Z2vMJlbwMoA8_c1uTof_9TqpB2RzsXfpEUg2KOyF8HBz2WJQLILstvWiSVfcmdEuf449ZkUFzETnUtFHR2uQbKC143RppANBFow7zO0AmQgcD6_R5r67NHnarSJgqkgTVQsv6iHyVKF3VOUVP0J_uEHMhChG7hmZ5GQcN0tOq1F7E5YR7LvleeDLg9V-r7BIJccW9muE6YNC3epATz5rQPvcLMD2T847Yj8PRl7"/>
+<div class="absolute top-4 left-4 flex flex-col gap-2">
+<div class="px-3 py-1 rounded-full bg-background/80 backdrop-blur-md border border-outline-variant text-white font-mono text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+<span class="w-2 h-2 rounded-full bg-error live-indicator"></span>
+<span>02m 45s</span>
+</div>
+<div class="px-2.5 py-0.5 rounded-md bg-secondary-container/80 backdrop-blur-md text-primary text-[11px] font-semibold flex items-center gap-1 border border-primary/20">
+<span class="material-symbols-outlined text-[13px]" data-icon="alarm">alarm</span>
+<span>+60s Anti-Snipe</span>
+</div>
+</div>
+<div class="absolute bottom-4 left-4">
+<span class="px-2.5 py-1 rounded-md bg-background/80 backdrop-blur-md text-on-surface text-xs font-medium flex items-center gap-1 border border-outline-variant/40">
+<span class="material-symbols-outlined text-[14px] text-primary" data-icon="location_on">location_on</span>
+                Hostel 3 Quad Cycle Stand
+              </span>
+</div>
+</div>
+<!-- Card Content -->
+<div class="md:col-span-7 p-6 sm:p-7 flex flex-col justify-between space-y-6">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-3">
+<div>
+<span class="text-xs font-medium text-secondary uppercase tracking-wider">Mobility • Lot #402</span>
+<h2 class="text-xl font-bold text-white group-hover:text-primary transition-colors mt-0.5">
+                    Hero Sprint Pro 21-Speed Gear Cycle
+                  </h2>
+</div>
+<span class="shrink-0 px-2.5 py-1 rounded-lg bg-surface-variant border border-outline-variant text-on-surface text-xs font-medium">
+                  Good Condition
+                </span>
+</div>
+<div class="flex items-center gap-2 text-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[15px] text-secondary" data-icon="account_circle">account_circle</span>
+<span>Seller: <span class="text-white font-medium">Rohit S.</span> (Graduating CS'24, Hostel 3)</span>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+                "Tuned last month at main gate depot, front brake tight, mudguards intact. Leaving campus Friday."
+              </p>
+<div class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/50 flex items-center justify-between text-xs">
+<div class="flex items-center gap-2 text-primary font-medium">
+<span class="material-symbols-outlined text-[16px]" data-icon="shield">shield</span>
+<span>Auto-Bid Safeguard Active</span>
+</div>
+<span class="text-outline font-mono text-[11px]">Top: Ananya M.</span>
+</div>
+</div>
+<!-- Price & CTA -->
+<div class="pt-4 border-t border-outline-variant/60 flex items-end justify-between gap-4">
+<div>
+<span class="text-xs text-outline block">Leading Bid (18 bids)</span>
+<div class="text-2xl font-bold text-white font-mono tracking-tight">₹2,450</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all">
+<span class="material-symbols-outlined text-[16px]" data-icon="gavel">gavel</span>
+                  Quick Bid ₹2,500
+                </button>
+<button class="p-2.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant text-on-surface-variant hover:text-white transition-colors" title="Set Auto-Bid">
+<span class="material-symbols-outlined text-[18px]" data-icon="tune">tune</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- ITEM 2: Casio fx-991EX Scientific Calculator -->
+<div class="group rounded-2xl bg-surface-container border border-outline-variant/60 hover:border-primary/50 transition-all duration-300 overflow-hidden">
+<div class="grid grid-cols-1 md:grid-cols-12">
+<div class="md:col-span-5 relative min-h-[240px] bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="Casio fx-991EX ClassWiz scientific calculator on dorm desk" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBLrIIwqmSam-LZN4YsIWDX08e3Cik6gN1ztEiRfKaVj8O6UJHlMw70W_-eMx7NFgKdI4KETLb7ztwuOBbp3mb7Uok5zD0sFycDFpGBOAAGZCSyZ9x3TRS_JTRjkDBZaTfKKzEBGdPu2aNE0vE04osMghYEiOt8-dwqjlAjSK4o1jrQRz_vYE3Y12SRPu4dbkcoF8A-Oo2pChDmnb3e6NcU7w0qSMWPszfQPcmlv7uD"/>
+<div class="absolute top-4 left-4">
+<div class="px-3 py-1 rounded-full bg-background/80 backdrop-blur-md border border-outline-variant text-white font-mono text-xs font-semibold flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary live-indicator"></span>
+<span>08m 12s</span>
+</div>
+</div>
+<div class="absolute bottom-4 left-4">
+<span class="px-2.5 py-1 rounded-md bg-background/80 backdrop-blur-md text-on-surface text-xs font-medium flex items-center gap-1 border border-outline-variant/40">
+<span class="material-symbols-outlined text-[14px] text-primary" data-icon="location_on">location_on</span>
+                Hostel 7 Common Room
+              </span>
+</div>
+</div>
+<div class="md:col-span-7 p-6 sm:p-7 flex flex-col justify-between space-y-6">
+<div class="space-y-3">
+<div class="flex items-start justify-between gap-3">
+<div>
+<span class="text-xs font-medium text-secondary uppercase tracking-wider">Lab Gear • Lot #403</span>
+<h3 class="text-xl font-bold text-white group-hover:text-primary transition-colors mt-0.5">
+                    Casio fx-991EX ClassWiz Calculator
+                  </h3>
+</div>
+<span class="shrink-0 px-2.5 py-1 rounded-lg bg-surface-variant border border-outline-variant text-on-surface text-xs font-medium">
+                  Like New
+                </span>
+</div>
+<div class="flex items-center gap-2 text-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[15px] text-secondary" data-icon="account_circle">account_circle</span>
+<span>Seller: <span class="text-white font-medium">Priya N.</span> (EE Senior, Hostel 7)</span>
+</div>
+<div class="p-3 rounded-xl bg-surface-container-low border border-outline-variant/50 text-xs">
+<span class="text-primary font-medium flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="check_circle">check_circle</span>
+                  Verified Q&amp;A:
+                </span>
+<p class="text-on-surface-variant mt-1 italic">
+                  "Tested in semester finals, solar sensor crisp, packaging intact."
+                </p>
+</div>
+</div>
+<div class="pt-4 border-t border-outline-variant/60 flex items-end justify-between gap-4">
+<div>
+<span class="text-xs text-outline block">Leading Bid (12 bids)</span>
+<div class="text-2xl font-bold text-white font-mono tracking-tight">₹680</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all">
+<span class="material-symbols-outlined text-[16px]" data-icon="gavel">gavel</span>
+                  Quick Bid ₹700
+                </button>
+<button class="px-3 py-2.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant text-on-surface text-xs font-medium transition-colors">
+                  Watch
+                </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 2-COLUMN BALANCED SUBLOTS (Spacious, Crisp) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- ITEM 3: CLRS Algorithm Book -->
+<div class="group rounded-2xl bg-surface-container border border-outline-variant/60 hover:border-primary/50 transition-all duration-300 overflow-hidden flex flex-col justify-between">
+<div class="relative h-52 bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="CLRS Introduction to Algorithms fourth edition textbook with clean notes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvinMnW8QEoWGZ2YN2SuwSNXtT6tamcG8p-LDHz2WlcBnP7b9PFFSqAcXrJE-ehjvuPmxxdck1xoOxKhI09NMgCLPgzg2GA5ArHA7E4uKtLLrbC1e8GRUKIYaxetSY_9zeFSnTtpZmOvyQet2PYxNc_s3WEwa5ranGq9ILQ5VwphClWz28rX0qpXG-6QFCpZA3JgpOgAjrNK_u6FKe0S-8CYV1R-BViMcMi9QsDMRM"/>
+<div class="absolute top-3 left-3">
+<div class="px-2.5 py-0.5 rounded-full bg-background/80 backdrop-blur-md border border-outline-variant text-white font-mono text-xs font-semibold flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+<span>24m 50s</span>
+</div>
+</div>
+<div class="absolute bottom-3 left-3">
+<span class="px-2 py-0.5 rounded-md bg-background/80 backdrop-blur-md text-on-surface text-[11px] font-medium border border-outline-variant/40">
+                Hostel 1 Library
+              </span>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col justify-between space-y-4">
+<div>
+<div class="flex items-center justify-between text-xs">
+<span class="text-secondary font-medium uppercase tracking-wider">Textbooks • #404</span>
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface text-[10px]">Pencil Marked</span>
+</div>
+<h4 class="text-base font-bold text-white group-hover:text-primary transition-colors mt-1.5">
+                CLRS Algorithms (4th Ed) + Clean Handwritten Notes
+              </h4>
+<p class="text-xs text-on-surface-variant mt-2 line-clamp-2 leading-relaxed">
+                Includes handwritten formula guides and DP lecture proofs.
+              </p>
+</div>
+<div class="pt-4 border-t border-outline-variant/60 flex items-center justify-between">
+<div>
+<span class="text-[11px] text-outline block">Leading Bid</span>
+<span class="text-lg font-bold text-white font-mono">₹520</span>
+</div>
+<button class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary text-xs font-semibold flex items-center gap-1 transition-all">
+<span class="material-symbols-outlined text-[15px]" data-icon="gavel">gavel</span>
+                Bid ₹540
+              </button>
+</div>
+</div>
+</div>
+<!-- ITEM 4: LG 24-inch Monitor -->
+<div class="group rounded-2xl bg-surface-container border border-outline-variant/60 hover:border-primary/50 transition-all duration-300 overflow-hidden flex flex-col justify-between">
+<div class="relative h-52 bg-surface-container-low overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="LG 24-inch IPS computer monitor on dorm desk" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYp5anxcs-OFB-Wq_7H681xD5LHXnxHiB-Wp-3DHqWDZSmJ1FOABZ72KihKQN51ki-wTx4JZcXyr54DG4xHyQiksTQTltSbLmFlXGBHe3RMohYuIfb9KuOFhztF_EvnagpOoOGtwxIRtvI_6826xwaTltqgaqv3O59_e_tB96f9gufjKVnNA6sVO9wqsTUm4vDlEd4khf_FP545BodNRrXftHZDDa2W2_OBEllTh4A"/>
+<div class="absolute top-3 left-3">
+<div class="px-2.5 py-0.5 rounded-full bg-background/80 backdrop-blur-md border border-outline-variant text-white font-mono text-xs font-semibold flex items-center gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+<span>45m 10s</span>
+</div>
+</div>
+<div class="absolute bottom-3 left-3">
+<span class="px-2 py-0.5 rounded-md bg-background/80 backdrop-blur-md text-on-surface text-[11px] font-medium border border-outline-variant/40">
+                H-2 Common Room
+              </span>
+</div>
+</div>
+<div class="p-6 flex-1 flex flex-col justify-between space-y-4">
+<div>
+<div class="flex items-center justify-between text-xs">
+<span class="text-secondary font-medium uppercase tracking-wider">Dorm Tech • #405</span>
+<span class="px-2 py-0.5 rounded bg-surface-variant text-on-surface text-[10px]">Mint</span>
+</div>
+<h4 class="text-base font-bold text-white group-hover:text-primary transition-colors mt-1.5">
+                LG 24-inch IPS Monitor (1080p, HDMI Included)
+              </h4>
+<p class="text-xs text-on-surface-variant mt-2 line-clamp-2 leading-relaxed">
+                Zero dead pixels, OEM power supply and compact base fitting dorm study desk.
+              </p>
+</div>
+<div class="pt-4 border-t border-outline-variant/60 flex items-center justify-between">
+<div>
+<span class="text-[11px] text-outline block">Leading Bid</span>
+<span class="text-lg font-bold text-white font-mono">₹4,100</span>
+</div>
+<button class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary text-xs font-semibold flex items-center gap-1 transition-all">
+<span class="material-symbols-outlined text-[15px]" data-icon="gavel">gavel</span>
+                Bid ₹4,200
+              </button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SIDEBAR PANEL (Col 9-12) (Calm, High-Whitespace Widgets) -->
+<aside class="lg:col-span-4 space-y-8">
+<!-- 1. LIVE BID STREAM TICKER -->
+<div class="rounded-2xl bg-surface-container border border-outline-variant/60 p-6 space-y-5">
+<div class="flex items-center justify-between border-b border-outline-variant/50 pb-4">
+<div class="flex items-center gap-2.5">
+<span class="w-2 h-2 rounded-full bg-primary live-indicator"></span>
+<h3 class="text-sm font-bold text-white font-headline">Live Campus Bid Stream</h3>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-variant text-primary text-[10px] font-mono font-semibold uppercase tracking-wider">Real-time</span>
+</div>
+<div class="space-y-3.5" id="liveTickerFeed">
+<div class="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/40 flex items-start justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-variant text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                AM
+              </div>
+<div>
+<div class="text-xs font-semibold text-white">
+                  ₹2,450 on <span class="text-primary">Hero Sprint Pro</span>
+</div>
+<div class="text-[11px] text-on-surface-variant mt-0.5">Ananya M. (Hostel 5) • Ext +60s</div>
+</div>
+</div>
+<span class="text-[10px] font-mono text-outline shrink-0">Just now</span>
+</div>
+<div class="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/40 flex items-start justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-variant text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                VK
+              </div>
+<div>
+<div class="text-xs font-semibold text-white">
+                  ₹680 on <span class="text-primary">Casio fx-991EX</span>
+</div>
+<div class="text-[11px] text-on-surface-variant mt-0.5">Varun K. (Hostel 2)</div>
+</div>
+</div>
+<span class="text-[10px] font-mono text-outline shrink-0">1m ago</span>
+</div>
+<div class="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/40 flex items-start justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-variant text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                SK
+              </div>
+<div>
+<div class="text-xs font-semibold text-white">
+                  ₹4,100 on <span class="text-primary">LG 24-inch Monitor</span>
+</div>
+<div class="text-[11px] text-on-surface-variant mt-0.5">Sahil K. (Hostel 8)</div>
+</div>
+</div>
+<span class="text-[10px] font-mono text-outline shrink-0">3m ago</span>
+</div>
+<div class="p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/40 flex items-start justify-between gap-3">
+<div class="flex items-start gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-variant text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                TD
+              </div>
+<div>
+<div class="text-xs font-semibold text-white">
+                  ₹520 on <span class="text-primary">CLRS Algorithm Book</span>
+</div>
+<div class="text-[11px] text-on-surface-variant mt-0.5">Tanvi D. (Hostel 6)</div>
+</div>
+</div>
+<span class="text-[10px] font-mono text-outline shrink-0">5m ago</span>
+</div>
+</div>
+</div>
+<!-- 2. SNIPING ALERT / WISHLIST WIDGET -->
+<div class="rounded-2xl bg-surface-container border border-outline-variant/60 p-6 space-y-4">
+<div class="flex items-center gap-2 text-primary">
+<span class="material-symbols-outlined text-[20px]" data-icon="alarm">alarm</span>
+<h3 class="text-sm font-bold text-white font-headline">Campus Sniping Alert</h3>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+          Can’t monitor auctions? Set an alert trigger and our system will notify you the moment an item is listed.
+        </p>
+<div class="space-y-2.5 pt-1">
+<input class="w-full bg-surface-container-low px-3.5 py-2.5 rounded-xl text-xs text-white border border-outline-variant placeholder:text-outline focus:border-primary focus:outline-none transition-colors" placeholder='e.g. "Dorm kettle under ₹350"' type="text"/>
+<button class="w-full py-2.5 rounded-xl bg-surface-variant hover:bg-surface-container-highest border border-outline-variant text-primary font-semibold text-xs flex items-center justify-center gap-1.5 transition-all">
+<span class="material-symbols-outlined text-[16px]" data-icon="notification_add">notification_add</span>
+            Set Sniping Alert
+          </button>
+</div>
+<div class="text-[11px] text-outline flex items-center gap-1 pt-1">
+<span class="material-symbols-outlined text-[13px]" data-icon="lock">lock</span>
+<span>Instant tab or mobile notification</span>
+</div>
+</div>
+<!-- 3. CIRCULAR METRICS STATS (Restrained, Spacious) -->
+<div class="rounded-2xl bg-surface-container border border-outline-variant/60 p-6 space-y-4">
+<h4 class="text-sm font-bold text-white flex items-center gap-2 font-headline">
+<span class="material-symbols-outlined text-primary text-[18px]" data-icon="eco">eco</span>
+          Campus Circular Impact
+        </h4>
+<div class="grid grid-cols-1 gap-3">
+<div class="flex items-center gap-3.5 p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/40">
+<div class="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center font-bold">
+<span class="material-symbols-outlined text-[20px]" data-icon="recycling">recycling</span>
+</div>
+<div>
+<span class="text-lg font-bold text-white font-mono leading-tight block">142</span>
+<span class="text-xs text-on-surface-variant">Items saved from landfill</span>
+</div>
+</div>
+<div class="flex items-center gap-3.5 p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/40">
+<div class="w-10 h-10 rounded-xl bg-secondary-container/40 border border-secondary/30 text-secondary-fixed flex items-center justify-center font-bold">
+<span class="material-symbols-outlined text-[20px]" data-icon="currency_rupee">currency_rupee</span>
+</div>
+<div>
+<span class="text-lg font-bold text-white font-mono leading-tight block">₹1.8L</span>
+<span class="text-xs text-on-surface-variant">Student money retained</span>
+</div>
+</div>
+<div class="flex items-center gap-3.5 p-3.5 rounded-xl bg-surface-container-low border border-outline-variant/40">
+<div class="w-10 h-10 rounded-xl bg-surface-variant border border-outline-variant text-tertiary flex items-center justify-center font-bold">
+<span class="material-symbols-outlined text-[20px]" data-icon="handshake">handshake</span>
+</div>
+<div>
+<span class="text-lg font-bold text-white font-mono leading-tight block">100%</span>
+<span class="text-xs text-on-surface-variant">Verified campus handovers</span>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</main>
+<!-- MOBILE FLOATING APP BAR -->
+<div class="md:hidden sticky bottom-0 z-50 bg-surface/90 backdrop-blur-lg border-t border-outline-variant/50 px-4 py-2.5 flex items-center justify-around text-xs">
+<a class="flex flex-col items-center gap-1 text-primary font-medium" href="#live">
+<span class="material-symbols-outlined text-[20px]" data-icon="gavel" style="font-variation-settings: 'FILL' 1;">gavel</span>
+<span>Auctions</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant" href="#watchlist">
+<span class="material-symbols-outlined text-[20px]" data-icon="alarm">alarm</span>
+<span>Snipes</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-white font-medium" href="#sell">
+<div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-md -mt-3">
+<span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
+</div>
+<span>List</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant" href="#escrow">
+<span class="material-symbols-outlined text-[20px]" data-icon="handshake">handshake</span>
+<span>Escrow</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant" href="#profile">
+<span class="material-symbols-outlined text-[20px]" data-icon="account_circle">account_circle</span>
+<span>Profile</span>
+</a>
+</div>
+<!-- REAL-TIME STREAM SIMULATION SCRIPT -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const tickerFeed = document.getElementById('liveTickerFeed');
+    if (tickerFeed) {
+      const sampleBids = [
+        { name: "Rahul V.", hostel: "Hostel 3", item: "Hero Sprint Pro", amount: "₹2,500" },
+        { name: "Devika S.", hostel: "Hostel 4", item: "Casio fx-991EX", amount: "₹720" },
+        { name: "Karan B.", hostel: "Hostel 9", item: "24-inch IPS Monitor", amount: "₹4,200" }
+      ];
+
+      let counter = 0;
+      setInterval(() => {
+        const sample = sampleBids[counter % sampleBids.length];
+        counter++;
+
+        const newRow = document.createElement('div');
+        newRow.className = "p-3.5 rounded-xl bg-surface-container-high border border-primary/30 flex items-start justify-between gap-3 transition-all duration-300";
+        newRow.innerHTML = `
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+              ${sample.name.charAt(0)}
+            </div>
+            <div>
+              <div class="text-xs font-semibold text-white">
+                ${sample.amount} on <span class="text-primary">${sample.item}</span>
+              </div>
+              <div class="text-[11px] text-on-surface-variant mt-0.5">${sample.name} (${sample.hostel}) &bull; Fast Bid</div>
+            </div>
+          </div>
+          <span class="text-[10px] font-mono text-primary font-bold shrink-0">New</span>
+        `;
+
+        tickerFeed.insertBefore(newRow, tickerFeed.firstChild);
+        if (tickerFeed.children.length > 5) {
+          tickerFeed.removeChild(tickerFeed.lastChild);
+        }
+      }, 7000);
+    }
+  });
+</script>
+</body></html>

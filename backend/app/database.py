@@ -36,3 +36,4 @@ SessionLocal = sessionmaker(
 class Base(DeclarativeBase):
     """All SQLAlchemy models inherit from this base class."""
     pass
+

@@ -1,19 +1,13 @@
 """
 api/listings.py — HTTP route handlers for listing management.
 
-Route responsibilities:
-  - Parse and validate incoming requests (Pydantic does this automatically).
-  - Delegate business logic to listing_service.
-  - Return correct HTTP status codes and response shapes.
-  - Never contain raw SQL or business rules.
-
-Dependency injection:
-  - get_db() yields a SQLAlchemy session scoped to each request.
-  - FastAPI closes the session automatically after the response is sent.
-
-Temporary (Phase 1 only):
-  - seller_id is taken from the request body / query param.
-  - Phase 3 will replace this with JWT-based identity extraction.
+Changes from Phase 1A:
+  - seller_id is NO LONGER accepted in request body or query params.
+  - Seller identity is derived from the JWT token via get_current_user().
+  - ListingRead now includes seller_display_name ("Pramod K (23ALR070)").
+  - Edit and cancel endpoints use the authenticated user, not a raw seller_id param.
+  - Browse (GET /api/listings) is PUBLIC — no auth required.
+  - Create, edit, cancel require authentication.
 """
 
 from collections.abc import Generator
@@ -22,19 +16,16 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from ..core.security import get_current_user
 from ..database import SessionLocal
+from ..models import User
 from ..schemas import ListingCreate, ListingListItem, ListingRead, ListingUpdate
 from ..services import listing_service
 
 router = APIRouter(prefix="/api/listings", tags=["listings"])
 
 
-# ---------------------------------------------------------------------------
-# DB session dependency
-# ---------------------------------------------------------------------------
-
 def get_db() -> Generator[Session, None, None]:
-    """Provide a DB session for a single request, then close it."""
     with SessionLocal() as session:
         yield session
 
@@ -44,15 +35,17 @@ def get_db() -> Generator[Session, None, None]:
 # ---------------------------------------------------------------------------
 
 @router.post("", response_model=ListingRead, status_code=201)
-def create_listing(payload: ListingCreate, db: Session = Depends(get_db)):
+def create_listing(
+    payload: ListingCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     """
     Create a new auction listing.
-
-    - Validates all fields via Pydantic before this function runs.
-    - Converts rupee prices to paise internally.
-    - Returns the persisted listing with its assigned ID.
+    Seller identity comes from the JWT token — NOT from the request body.
+    The authenticated user automatically becomes the seller.
     """
-    result = listing_service.create_listing(db, payload)
+    result = listing_service.create_listing(db, payload, seller_id=current_user.id)
     return result
 
 
@@ -69,10 +62,8 @@ def browse_listings(
     limit: int = Query(default=50, ge=1, le=200),
 ):
     """
-    Browse active listings with optional filters.
-
-    Returns compact card data (no full description) sorted by closing time ascending
-    so the most urgent items appear first.
+    Browse active listings — PUBLIC endpoint (no auth required).
+    Results sorted by closing time ascending (most urgent first).
     """
     return listing_service.list_listings(
         db,
@@ -90,7 +81,7 @@ def browse_listings(
 @router.get("/{listing_id}", response_model=ListingRead)
 def get_listing(listing_id: int, db: Session = Depends(get_db)):
     """
-    Fetch full details for a single listing.
+    Fetch full details for a single listing — PUBLIC endpoint.
     Returns 404 if the listing does not exist.
     """
     result = listing_service.get_listing(db, listing_id)
@@ -103,19 +94,17 @@ def get_listing(listing_id: int, db: Session = Depends(get_db)):
 def update_listing(
     listing_id: int,
     payload: ListingUpdate,
-    # Dev-only: seller_id from query param until auth is added
-    seller_id: int = Query(description="Temporary: seller identity for dev testing"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Partially update an active listing (only the fields provided are changed).
-
-    Rules enforced by the service:
-      - Caller must be the seller.
-      - Listing must be in 'active' status.
+    Partially update an active listing.
+    The authenticated user must be the seller of this listing.
     """
     try:
-        result = listing_service.update_listing(db, listing_id, seller_id, payload)
+        result = listing_service.update_listing(
+            db, listing_id, seller_id=current_user.id, payload=payload
+        )
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
     except ValueError as exc:
@@ -129,17 +118,17 @@ def update_listing(
 @router.delete("/{listing_id}", response_model=ListingRead)
 def cancel_listing(
     listing_id: int,
-    # Dev-only: seller_id from query param until auth is added
-    seller_id: int = Query(description="Temporary: seller identity for dev testing"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Soft-cancel a listing (sets status to 'cancelled').
-    The record is preserved in the database for audit purposes.
-    Returns the cancelled listing with updated status.
+    Soft-cancel a listing.
+    The authenticated user must be the seller of this listing.
     """
     try:
-        result = listing_service.cancel_listing(db, listing_id, seller_id)
+        result = listing_service.cancel_listing(
+            db, listing_id, seller_id=current_user.id
+        )
     except PermissionError as exc:
         raise HTTPException(status_code=403, detail=str(exc))
     except ValueError as exc:

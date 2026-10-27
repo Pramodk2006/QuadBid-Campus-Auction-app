@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Base, engine
 from .api import listings as listings_router
+from .api import auth as auth_router
 
 # Create all tables on startup (no-op if they already exist)
 Base.metadata.create_all(bind=engine)
@@ -51,6 +52,7 @@ app.add_middleware(
 # Routers
 # ---------------------------------------------------------------------------
 app.include_router(listings_router.router)
+app.include_router(auth_router.router)
 
 
 # ---------------------------------------------------------------------------
@@ -60,3 +62,4 @@ app.include_router(listings_router.router)
 def health():
     """Quick liveness check — returns 200 if the server is up."""
     return {"status": "ok", "service": "QuadBid API", "version": "0.1.0"}
+

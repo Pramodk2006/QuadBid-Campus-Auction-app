@@ -104,3 +104,4 @@ quadbid/
 - [ ] Phase 4 — Closing & sale lifecycle
 - [ ] Phase 5 — Real-time updates
 - [ ] Phase 6 — Q&A, watchlists, auto-bidding, AI assistant
+

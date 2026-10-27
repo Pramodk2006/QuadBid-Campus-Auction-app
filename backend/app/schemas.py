@@ -1,59 +1,121 @@
 """
 schemas.py — Pydantic v2 request/response models (validation layer).
 
-Why a separate schema layer?
-  - Keeps HTTP concerns (what the client sends/receives) separate from DB models.
-  - Pydantic rejects invalid data BEFORE it reaches the service or database.
-  - Different schemas for Create / Update / Read let us expose only safe fields.
+Changes from Phase 1A:
+  - ListingCreate: seller_id REMOVED (now derived from JWT token in the route).
+  - ListingRead: seller_display_name added (shown in UI as "Pramod K (23ALR070)").
+  - New: UserRead, ProfileCompleteRequest, TokenResponse, SetupTokenResponse.
 
-Money handling:
-  - API accepts/returns prices in RUPEES (float, e.g. 250.50) for human readability.
-  - Service layer converts to integer PAISE before touching the database.
-  - Conversion: rupees * 100, rounded to nearest integer.
-
-Temporary note:
-  - seller_id is accepted in ListingCreate for dev/testing only.
-  - Phase 3 (auth) will derive seller identity from JWT token instead.
+Money:
+  - API accepts/returns prices in RUPEES (float) for human readability.
+  - Service layer converts to integer PAISE before the database.
 """
 
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
-# Allowed vocabulary (single source of truth shared by schema + service)
+# Allowed vocabulary
 # ---------------------------------------------------------------------------
 
 CATEGORIES = Literal["cycle", "calculator", "books", "electronics", "other"]
 CONDITIONS = Literal["new", "like_new", "good", "fair", "needs_repair"]
-STATUSES = Literal["active", "closed", "cancelled"]
 
 
 # ---------------------------------------------------------------------------
-# Request schemas
+# Auth / User schemas
+# ---------------------------------------------------------------------------
+
+class ProfileCompleteRequest(BaseModel):
+    """
+    Submitted after Google OAuth for first-time users.
+    Requires the short-lived setup_token received from the OAuth callback.
+    """
+    setup_token: str
+    roll_number: str = Field(
+        min_length=5,
+        max_length=20,
+        description="College roll number, e.g. 23ALR070",
+    )
+    department: str = Field(min_length=2, max_length=100, description="e.g. AIM, CSE, ECE")
+    year: int = Field(ge=1, le=4, description="Current academic year (1–4)")
+    phone: Optional[str] = Field(default=None, max_length=15, description="Optional contact number")
+
+    @field_validator("roll_number", mode="before")
+    @classmethod
+    def normalise_roll_number(cls, v: str) -> str:
+        return v.strip().upper()
+
+    @field_validator("department", mode="before")
+    @classmethod
+    def normalise_department(cls, v: str) -> str:
+        return v.strip().upper()
+
+
+class UserRead(BaseModel):
+    """Public user profile returned by /api/auth/me and embedded in listings/bids."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    email: str
+    roll_number: Optional[str]
+    department: Optional[str]
+    year: Optional[int]
+    avatar_url: Optional[str]
+    display_name: str           # "Pramod K (23ALR070)"
+    is_profile_complete: bool
+    created_at: datetime
+
+
+class TokenResponse(BaseModel):
+    """Returned after successful login + profile completion."""
+    access_token: str
+    token_type: str = "bearer"
+    user: UserRead
+
+
+class SetupTokenResponse(BaseModel):
+    """
+    Returned from OAuth callback when a NEW user has authenticated via Google
+    but hasn't submitted their roll number yet.
+    The frontend should redirect to a profile-completion form.
+    """
+    setup_token: str
+    email: str
+    name: str
+    avatar_url: Optional[str]
+    message: str = "Please complete your profile to continue"
+
+
+class DevLoginRequest(BaseModel):
+    """
+    DEV/TEST ONLY — creates or retrieves a user without real OAuth.
+    This endpoint is disabled in production.
+    """
+    email: str = Field(description="Must end with @kongu.edu")
+    name: str
+    roll_number: str
+    department: str = "AIM"
+    year: int = Field(ge=1, le=4, default=3)
+
+
+# ---------------------------------------------------------------------------
+# Listing schemas
 # ---------------------------------------------------------------------------
 
 class ListingCreate(BaseModel):
-    """Payload for POST /api/listings"""
-
-    # Dev-only: will be removed when auth is added in Phase 3
-    seller_id: int = Field(gt=0, description="Temporary: seller ID for dev testing")
+    """Payload for POST /api/listings — seller_id derived from JWT, NOT from request."""
 
     title: str = Field(min_length=3, max_length=120)
     category: CATEGORIES
     description: str = Field(min_length=10, max_length=3000)
     condition: CONDITIONS
-
-    # Up to 6 photo URLs; validated as non-empty strings
     photos: list[str] = Field(default_factory=list, max_length=6)
-
-    # Rupees (float) accepted from client — converted to paise inside service layer
-    starting_price: float = Field(ge=1.0, le=1_000_000.0,
-                                   description="Starting price in ₹")
-    min_bid_increment: float = Field(gt=0.0, le=100_000.0,
-                                      description="Minimum increment in ₹")
-
+    starting_price: float = Field(ge=1.0, le=1_000_000.0, description="Starting price in ₹")
+    min_bid_increment: float = Field(gt=0.0, le=100_000.0, description="Minimum increment in ₹")
     closes_at: datetime = Field(description="Closing timestamp (timezone required)")
 
     @field_validator("title", "description", mode="before")
@@ -67,7 +129,6 @@ class ListingCreate(BaseModel):
     @field_validator("closes_at", mode="before")
     @classmethod
     def parse_closes_at(cls, v):
-        """Accept both string and datetime; ensure timezone info is present."""
         if isinstance(v, str):
             v = datetime.fromisoformat(v)
         return v
@@ -77,8 +138,7 @@ class ListingCreate(BaseModel):
     def closing_must_be_future(cls, v: datetime) -> datetime:
         if v.tzinfo is None:
             raise ValueError("closes_at must include timezone info (e.g. +05:30 or Z)")
-        now = datetime.now(timezone.utc)
-        if v <= now:
+        if v <= datetime.now(timezone.utc):
             raise ValueError("closes_at must be in the future")
         return v
 
@@ -86,8 +146,7 @@ class ListingCreate(BaseModel):
     @classmethod
     def validate_photos(cls, v: list[str]) -> list[str]:
         for url in v:
-            url = url.strip()
-            if not url:
+            if not url.strip():
                 raise ValueError("Photo URLs cannot be empty strings")
         return v
 
@@ -144,27 +203,20 @@ class ListingUpdate(BaseModel):
         return self
 
 
-# ---------------------------------------------------------------------------
-# Response schemas
-# ---------------------------------------------------------------------------
-
 class ListingRead(BaseModel):
-    """Shape of listing data returned by the API (prices in ₹ for readability)."""
-
+    """Full listing detail — includes seller display name."""
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     seller_id: int
+    seller_display_name: str    # "Pramod K (23ALR070)"
     title: str
     category: str
     description: str
     condition: str
     photos: list[str]
-
-    # Returned in rupees (converted from paise by the service layer)
-    starting_price: float
-    min_bid_increment: float
-
+    starting_price: float       # in ₹
+    min_bid_increment: float    # in ₹
     closes_at: datetime
     status: str
     created_at: datetime
@@ -172,17 +224,17 @@ class ListingRead(BaseModel):
 
 
 class ListingListItem(BaseModel):
-    """Compact card view for the marketplace grid (no full description)."""
-
+    """Compact card view for the marketplace grid."""
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    seller_display_name: str
     title: str
     category: str
     condition: str
     photos: list[str]
-    starting_price: float       # in ₹
-    min_bid_increment: float    # in ₹
+    starting_price: float
+    min_bid_increment: float
     closes_at: datetime
     status: str
     created_at: datetime
