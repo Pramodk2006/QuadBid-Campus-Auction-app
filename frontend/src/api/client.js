@@ -129,6 +129,7 @@ export const api = {
     if (params.max_price) query.append('max_price', params.max_price);
     if (params.closing_soon) query.append('closing_soon', 'true');
     if (params.status) query.append('status', params.status);
+    query.append('limit', params.limit || '200');
 
     const qs = query.toString();
     return request(`/listings${qs ? `?${qs}` : ''}`);
