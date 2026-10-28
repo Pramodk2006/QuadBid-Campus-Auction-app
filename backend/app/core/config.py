@@ -27,6 +27,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    ENVIRONMENT: str = "development"
+
     # ── Google OAuth 2.0 ───────────────────────────────────────────────────
     # Get these from https://console.cloud.google.com → APIs & Services → Credentials
     GOOGLE_CLIENT_ID: str = "YOUR_GOOGLE_CLIENT_ID"

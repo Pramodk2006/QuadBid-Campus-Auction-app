@@ -97,11 +97,15 @@ quadbid/
 
 ## Build Progress
 
-- [x] Phase 1A — Listing CRUD backend
-- [ ] Phase 1B — Bidding engine
-- [ ] Phase 2 — React frontend
-- [ ] Phase 3 — Authentication
-- [ ] Phase 4 — Closing & sale lifecycle
-- [ ] Phase 5 — Real-time updates
-- [ ] Phase 6 — Q&A, watchlists, auto-bidding, AI assistant
+- [x] Phase 1A — Listing CRUD backend (+ validation + tests)
+- [x] Phase 1B — Bidding engine (+ atomic concurrency + integer paise)
+- [x] Phase 2 — Modern Collegiate Light React Frontend
+- [x] Phase 3 — Authentication (Google OAuth 2.0 with @kongu.edu enforcement + 1-Click student sign-in)
+- [x] Phase 4 — Closing & sale lifecycle (winner, approval, escrow handover)
+- [x] Phase 5 — Real-time updates (WebSockets, live bid stream, +60s anti-sniping extension)
+- [x] Phase 6 — Buyer Q&A per auction listing
+- [x] Phase 7 — Watchlists & saved search keyword alerts
+- [x] Phase 8 — Automatic proxy bidding engine (Vickrey auto-counter)
+- [x] Phase 9 — AI Campus Concierge natural language recommendation assistant
+- [x] Phase 10 — Seller Hub, device image uploads, physical QR `QUAD-XXXX` handshake verification
 
