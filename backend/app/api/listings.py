@@ -58,12 +58,14 @@ def browse_listings(
     min_price: Optional[float] = Query(default=None, ge=0, description="Min price in ₹"),
     max_price: Optional[float] = Query(default=None, ge=0, description="Max price in ₹"),
     closing_soon: bool = Query(default=False, description="Show items closing in 24h"),
+    status: Optional[str] = Query(default="all", description="Filter by status: 'active', 'closed', 'all'"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
 ):
     """
-    Browse active listings — PUBLIC endpoint (no auth required).
-    Results sorted by closing time ascending (most urgent first).
+    Browse listings — PUBLIC endpoint (no auth required).
+    Returns active and closed lots (excluding cancelled lots) by default.
+    Results sorted by closing time ascending.
     """
     return listing_service.list_listings(
         db,
@@ -73,6 +75,7 @@ def browse_listings(
         min_price=min_price,
         max_price=max_price,
         closing_soon=closing_soon,
+        status=status,
         skip=skip,
         limit=limit,
     )

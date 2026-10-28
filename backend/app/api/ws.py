@@ -44,3 +44,4 @@ async def global_live_websocket(websocket: WebSocket):
         manager.disconnect_global(websocket)
     except Exception:
         manager.disconnect_global(websocket)
+

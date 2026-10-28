@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Navbar from './components/Navbar';
 import FilterBar from './components/FilterBar';
 import ListingCard from './components/ListingCard';
@@ -26,6 +26,7 @@ export default function App() {
   const [under500, setUnder500] = useState(false);
   const [sortBy, setSortBy] = useState('closing_soon');
   const [activeTab, setActiveTab] = useState('live');
+  const [lotStatusFilter, setLotStatusFilter] = useState('all'); // 'all' | 'live' | 'closed'
 
   // Modals
   const [selectedListingId, setSelectedListingId] = useState(null);
@@ -41,6 +42,7 @@ export default function App() {
         condition: condition !== 'all' ? condition : undefined,
         closing_soon: closingSoon,
         max_price: under500 ? 500 : undefined,
+        status: 'all',
       });
 
       // Local sort if requested
@@ -123,9 +125,19 @@ export default function App() {
     }
   }, []);
 
-  // Split listings into featured item (first 1 or 2) and sublots
-  const featuredItem = listings.length > 0 ? listings[0] : null;
-  const subLots = listings.length > 1 ? listings.slice(1) : [];
+  // Partition listings into Live vs Closed lots
+  const now = new Date();
+  const isLiveLot = (item) => {
+    const isPast = new Date(item.closes_at) <= now;
+    return item.status === 'active' && !isPast;
+  };
+
+  const liveListings = useMemo(() => listings.filter(isLiveLot), [listings]);
+  const closedListings = useMemo(() => listings.filter((item) => !isLiveLot(item)), [listings]);
+
+  // Split live listings into featured item (first 1) and sublots
+  const featuredLiveItem = liveListings.length > 0 ? liveListings[0] : null;
+  const liveSubLots = liveListings.length > 1 ? liveListings.slice(1) : [];
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased flex flex-col selection:bg-indigo-600 selection:text-white">
@@ -139,7 +151,11 @@ export default function App() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          if (tab === 'live') setLotStatusFilter('live');
+          else if (tab === 'escrow') setLotStatusFilter('closed');
+        }}
       />
 
       {/* Main Content Viewport */}
@@ -215,6 +231,64 @@ export default function App() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* AUCTION LOT FEED (Col 1-8) */}
           <section className="lg:col-span-8 space-y-8">
+            {/* View Categorization Tabs */}
+            <div className="flex items-center justify-between flex-wrap gap-4 pb-2">
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setLotStatusFilter('all')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                    lotStatusFilter === 'all'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">grid_view</span>
+                  <span>All Lots</span>
+                  <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-mono">
+                    {listings.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLotStatusFilter('live')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                    lotStatusFilter === 'live'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 live-indicator" />
+                  <span>Live Bidding</span>
+                  <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono">
+                    {liveListings.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLotStatusFilter('closed')}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                    lotStatusFilter === 'closed'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px] text-indigo-600">handshake</span>
+                  <span>Closed & Handover</span>
+                  <span className="px-1.5 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-mono">
+                    {closedListings.length}
+                  </span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="material-symbols-outlined text-sm text-emerald-600" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                <span>Hostel Quad Handover Active</span>
+              </div>
+            </div>
+
             {loading ? (
               <div className="space-y-6">
                 <div className="bg-white border border-slate-200 rounded-2xl p-6 h-64 animate-pulse" />
@@ -228,7 +302,7 @@ export default function App() {
                 <span className="material-symbols-outlined text-4xl text-slate-400 mx-auto">
                   inventory_2
                 </span>
-                <h3 className="font-bold text-slate-900 text-base">No active lots match your filters</h3>
+                <h3 className="font-bold text-slate-900 text-base">No lots match your filters</h3>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
                   Try clearing your filters or be the first senior to list an item in this category.
                 </p>
@@ -239,6 +313,7 @@ export default function App() {
                     setClosingSoon(false);
                     setUnder500(false);
                     setSearchQuery('');
+                    setLotStatusFilter('all');
                   }}
                   className="mt-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-900 transition-colors cursor-pointer"
                 >
@@ -246,27 +321,98 @@ export default function App() {
                 </button>
               </div>
             ) : (
-              <div className="space-y-8">
-                {/* Featured item (horizontal card layout) */}
-                {featuredItem && (
-                  <ListingCard
-                    listing={featuredItem}
-                    featured={true}
-                    onSelect={(lst) => setSelectedListingId(lst.id)}
-                  />
+              <div className="space-y-10">
+                {/* SECTION 1: LIVE AUCTIONS */}
+                {lotStatusFilter !== 'closed' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 live-indicator" />
+                        <h2 className="text-xl font-bold text-slate-900 tracking-tight font-headline">
+                          Live Auctions
+                        </h2>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold font-mono">
+                          {liveListings.length} ACTIVE
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-500 hidden sm:inline-block">
+                        Anti-sniping active • +60s extension on final-minute bids
+                      </span>
+                    </div>
+
+                    {liveListings.length === 0 ? (
+                      <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-slate-200 space-y-2">
+                        <p className="text-sm font-semibold text-slate-700">No active lots currently live in this filter</p>
+                        <p className="text-xs text-slate-400">Check the Closed & Handover section or clear active filters.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {featuredLiveItem && (
+                          <ListingCard
+                            listing={featuredLiveItem}
+                            featured={true}
+                            onSelect={(lst) => setSelectedListingId(lst.id)}
+                          />
+                        )}
+
+                        {liveSubLots.length > 0 && (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {liveSubLots.map((item) => (
+                              <ListingCard
+                                key={item.id}
+                                listing={item}
+                                featured={false}
+                                onSelect={(lst) => setSelectedListingId(lst.id)}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 )}
 
-                {/* Sublots (2-column balanced cards) */}
-                {subLots.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {subLots.map((item) => (
-                      <ListingCard
-                        key={item.id}
-                        listing={item}
-                        featured={false}
-                        onSelect={(lst) => setSelectedListingId(lst.id)}
-                      />
-                    ))}
+                {/* SECTION 2: CLOSED & ESCROW HANDOVER LOTS */}
+                {lotStatusFilter !== 'live' && (
+                  <div className={`space-y-6 ${lotStatusFilter === 'all' ? 'pt-8 border-t border-slate-200' : ''}`}>
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+                          <span className="material-symbols-outlined text-[18px] text-indigo-600">handshake</span>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-xl font-bold text-slate-900 tracking-tight font-headline">
+                              Closed & Handover Lots
+                            </h2>
+                            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-bold font-mono">
+                              {closedListings.length} RESOLVED
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            Bidding ended. Funds held in hostel escrow until physical QUAD-XXXX handshake verification.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {closedListings.length === 0 ? (
+                      <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-slate-200 space-y-2">
+                        <p className="text-sm font-semibold text-slate-700">No closed lots recorded yet</p>
+                        <p className="text-xs text-slate-400">Completed auctions with winning student details appear here.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {closedListings.map((item) => (
+                          <ListingCard
+                            key={item.id}
+                            listing={item}
+                            featured={false}
+                            onSelect={(lst) => setSelectedListingId(lst.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

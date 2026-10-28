@@ -65,8 +65,8 @@ export default function ListingCard({ listing, onSelect, featured = false }) {
               >
                 <span
                   className={`w-2 h-2 rounded-full ${
-                    timer.isClosed ? 'bg-slate-400' : timer.isUrgent ? 'bg-rose-500' : 'bg-emerald-500'
-                  } live-indicator`}
+                    timer.isClosed ? 'bg-slate-400' : timer.isUrgent ? 'bg-rose-500 live-indicator' : 'bg-emerald-500 live-indicator'
+                  }`}
                 />
                 <span className="tabular-nums">{timer.formatted}</span>
               </div>
@@ -132,20 +132,36 @@ export default function ListingCard({ listing, onSelect, featured = false }) {
             <div className="pt-4 border-t border-slate-200 flex items-end justify-between gap-4">
               <div>
                 <span className="text-xs text-slate-500 font-medium block">
-                  {listing.bid_count > 0 ? `Leading Bid (${listing.bid_count} bids)` : 'Starting Price'}
+                  {timer.isClosed
+                    ? listing.bid_count > 0
+                      ? `Winning Bid (${listing.bid_count} bids)`
+                      : 'Closed (Unsold)'
+                    : listing.bid_count > 0
+                    ? `Leading Bid (${listing.bid_count} bids)`
+                    : 'Starting Price'}
                 </span>
                 <div className="text-2xl font-bold text-slate-900 font-mono tracking-tight">
                   {formatRupees(currentPrice)}
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
-                >
-                  <span className="material-symbols-outlined text-[16px]">gavel</span>
-                  <span>Quick Bid {formatRupees(nextMinBid)}</span>
-                </button>
+                {timer.isClosed ? (
+                  <button
+                    type="button"
+                    className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[16px] text-indigo-600">handshake</span>
+                    <span>View Handover Outcome</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">gavel</span>
+                    <span>Quick Bid {formatRupees(nextMinBid)}</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-slate-900 transition-colors"
@@ -188,8 +204,8 @@ export default function ListingCard({ listing, onSelect, featured = false }) {
           >
             <span
               className={`w-1.5 h-1.5 rounded-full ${
-                timer.isClosed ? 'bg-slate-400' : timer.isUrgent ? 'bg-rose-500' : 'bg-emerald-500'
-              } live-indicator`}
+                timer.isClosed ? 'bg-slate-400' : timer.isUrgent ? 'bg-rose-500 live-indicator' : 'bg-emerald-500 live-indicator'
+              }`}
             />
             <span className="tabular-nums">{timer.formatted}</span>
           </div>
@@ -229,19 +245,35 @@ export default function ListingCard({ listing, onSelect, featured = false }) {
         <div className="pt-4 border-t border-slate-200 flex items-center justify-between">
           <div>
             <span className="text-[11px] text-slate-500 font-medium block">
-              {listing.bid_count > 0 ? `Leading (${listing.bid_count})` : 'Starting'}
+              {timer.isClosed
+                ? listing.bid_count > 0
+                  ? `Won (${listing.bid_count})`
+                  : 'Unsold'
+                : listing.bid_count > 0
+                ? `Leading (${listing.bid_count})`
+                : 'Starting'}
             </span>
             <span className="text-lg font-bold text-slate-900 font-mono">
               {formatRupees(currentPrice)}
             </span>
           </div>
-          <button
-            type="button"
-            className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1 transition-all shadow-xs"
-          >
-            <span className="material-symbols-outlined text-[15px]">gavel</span>
-            <span>Bid {formatRupees(nextMinBid)}</span>
-          </button>
+          {timer.isClosed ? (
+            <button
+              type="button"
+              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold flex items-center gap-1 transition-all shadow-xs"
+            >
+              <span className="material-symbols-outlined text-[15px] text-indigo-600">handshake</span>
+              <span>Outcome</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center gap-1 transition-all shadow-xs"
+            >
+              <span className="material-symbols-outlined text-[15px]">gavel</span>
+              <span>Bid {formatRupees(nextMinBid)}</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

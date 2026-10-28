@@ -283,12 +283,26 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
       : true
   );
 
+  useEffect(() => {
+    // Prevent background scrolling while modal is open, enable full-page modal scroll
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-md flex flex-col items-center p-3 sm:p-6 lg:p-8 animate-fadeIn">
-      {/* Container matching Mockup 1 exactly */}
-      <div className="relative w-full max-w-7xl bg-[#f8fafc] text-slate-800 rounded-2xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col my-auto">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-md p-2 sm:p-6 lg:p-8 animate-fadeIn"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      {/* Modal Dialog Card */}
+      <div className="relative w-full max-w-7xl mx-auto bg-[#f8fafc] text-slate-800 rounded-2xl border border-slate-200 shadow-2xl my-2 sm:my-6">
         {/* Sticky Modal Top Bar with Breadcrumbs & Close */}
-        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between gap-4">
+        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between gap-4 rounded-t-2xl">
           <nav aria-label="Breadcrumb" className="flex items-center gap-2.5 text-slate-500 text-xs truncate">
             <span className="flex items-center gap-1.5 text-slate-700">
               <span className="material-symbols-outlined text-sm">home</span>
@@ -641,9 +655,9 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
             </section>
 
             {/* ============================================================== */}
-            {/* RIGHT COLUMN: Live Bidding Engine & Terminal (5 cols sticky)   */}
+            {/* RIGHT COLUMN: Live Bidding Engine & Terminal (5 cols)          */}
             {/* ============================================================== */}
-            <section className="lg:col-span-5 flex flex-col gap-8 sticky top-20">
+            <section className="lg:col-span-5 flex flex-col gap-8">
               {/* Countdown Timer Banner */}
               <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm relative overflow-hidden">
                 <div className="flex items-center justify-between mb-3">

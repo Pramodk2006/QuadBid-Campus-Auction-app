@@ -145,10 +145,40 @@ def seed_demo_data():
             "photos": [
                 "https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?auto=format&fit=crop&w=800&q=80"
             ],
+            "status": "active",
+        },
+        {
+            "seller_id": user_objs["21CSE045"].id, # Ravi S (senior)
+            "title": "Btwin MyBike Hybrid Single Speed (Hostel Commuter)",
+            "category": "cycle",
+            "condition": "good",
+            "description": "Graduated senior sold this lightweight single-speed campus bike. Equipped with front basket, wire lock, and mudguards. Handover scheduled at Hostel Quad Porch.",
+            "starting_price": 800.0,
+            "min_bid_increment": 50.0,
+            "closes_at": now - timedelta(hours=6),
+            "status": "closed",
+            "photos": [
+                "https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?auto=format&fit=crop&w=800&q=80"
+            ],
+        },
+        {
+            "seller_id": user_objs["21ECE089"].id, # Sneha R (senior)
+            "title": "Engineering Mathematics & Discrete Systems (Vols 1-3)",
+            "category": "books",
+            "condition": "good",
+            "description": "Complete semester reference guide and question banks with solved step-by-step proofs. Auction concluded successfully.",
+            "starting_price": 250.0,
+            "min_bid_increment": 25.0,
+            "closes_at": now - timedelta(days=1),
+            "status": "closed",
+            "photos": [
+                "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=800&q=80"
+            ],
         },
     ]
 
     for item in demo_listings:
+        # Create listing temporarily with future close time to allow placing initial demo bids
         l = Listing(
             seller_id=item["seller_id"],
             title=item["title"],
@@ -157,7 +187,7 @@ def seed_demo_data():
             description=item["description"],
             starting_price_paise=rupees_to_paise(item["starting_price"]),
             min_bid_increment_paise=rupees_to_paise(item["min_bid_increment"]),
-            closes_at=item["closes_at"],
+            closes_at=now + timedelta(days=1),
             photos=item["photos"],
             status="active",
         )
@@ -165,8 +195,8 @@ def seed_demo_data():
         db.commit()
         db.refresh(l)
 
-        # Add initial bids on the cycle and calculator lots
-        if item["category"] == "cycle":
+        # Add initial bids
+        if item["category"] == "cycle" and item.get("status") == "active":
             place_bid(db, l.id, user_objs["23ALR070"], 1400.0) # Pramod bids 1400
             place_bid(db, l.id, user_objs["22ITR012"], 1500.0) # Karthik bids 1500
 
@@ -199,8 +229,20 @@ def seed_demo_data():
                 db, l.id, q3["id"], user_objs["21ECE089"],
                 AnswerCreate(answer_text="Tested in semester finals, solar sensor crisp, original protective casing intact.")
             )
+        elif item["title"].startswith("Btwin"):
+            place_bid(db, l.id, user_objs["23ALR070"], 800.0)
+            place_bid(db, l.id, user_objs["22ITR012"], 900.0)
+            place_bid(db, l.id, user_objs["21ECE089"], 1050.0) # Sneha won at 1050
+        elif item["title"].startswith("Engineering Mathematics"):
+            place_bid(db, l.id, user_objs["21CSE045"], 250.0)
+            place_bid(db, l.id, user_objs["23ALR070"], 325.0) # Pramod won at 325
 
-    print("Demo data seeded successfully with Kongu students, active lots, and live bids!")
+        # Now finalize actual target status and closing timestamp
+        l.status = item.get("status", "active")
+        l.closes_at = item["closes_at"]
+        db.commit()
+
+    print("Demo data seeded successfully with Kongu students, active lots, closed handover lots, and bids!")
     db.close()
 
 if __name__ == "__main__":

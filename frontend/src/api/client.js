@@ -71,6 +71,7 @@ export const api = {
     if (params.min_price) query.append('min_price', params.min_price);
     if (params.max_price) query.append('max_price', params.max_price);
     if (params.closing_soon) query.append('closing_soon', 'true');
+    if (params.status) query.append('status', params.status);
 
     const qs = query.toString();
     return request(`/listings${qs ? `?${qs}` : ''}`);

@@ -129,11 +129,15 @@ def list_listings(
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
     closing_soon: bool = False,
-    status: str = "active",
+    status: Optional[str] = "all",
     skip: int = 0,
     limit: int = 50,
 ) -> list[dict]:
-    stmt = select(Listing).where(Listing.status == status)
+    stmt = select(Listing)
+    if status == "all" or status is None:
+        stmt = stmt.where(Listing.status != "cancelled")
+    elif status:
+        stmt = stmt.where(Listing.status == status)
 
     if keyword:
         kw = f"%{keyword.strip().lower()}%"

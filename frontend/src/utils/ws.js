@@ -11,3 +11,4 @@ export function getWebSocketUrl(path) {
 
   return `${protocol}//${host}${path}`;
 }
+
