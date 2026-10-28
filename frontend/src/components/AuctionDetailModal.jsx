@@ -43,6 +43,15 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
   const [sellerNotes, setSellerNotes] = useState('');
   const [inputCode, setInputCode] = useState('');
 
+  useEffect(() => {
+    // Prevent background scrolling while modal is open, enable full-page modal scroll
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
   const loadData = async () => {
     try {
       const [listingData, leaderData, bidsData, outcomeData, questionsData] = await Promise.all([
@@ -257,10 +266,49 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
     }
   };
 
+  if (error && !listing) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-xl max-w-sm w-full text-center space-y-4">
+          <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+            <span className="material-symbols-outlined text-2xl">error_outline</span>
+          </div>
+          <h3 className="text-base font-bold text-slate-900">Failed to Load Lot #{listingId}</h3>
+          <p className="text-xs text-slate-600">{error}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading || !listing) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-        <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-xl max-w-sm w-full text-center space-y-4">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fadeIn"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-xl max-w-sm w-full text-center space-y-4 relative">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-3.5 right-3.5 text-slate-400 hover:text-slate-600 cursor-pointer p-1 rounded-lg hover:bg-slate-100 transition-colors"
+            title="Close"
+          >
+            <span className="material-symbols-outlined text-lg">close</span>
+          </button>
           <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-semibold text-slate-800">Connecting to Campus Lot #{listingId}...</p>
         </div>
@@ -282,15 +330,6 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
         (q.answer_text && q.answer_text.toLowerCase().includes(qaFilter.toLowerCase()))
       : true
   );
-
-  useEffect(() => {
-    // Prevent background scrolling while modal is open, enable full-page modal scroll
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prevOverflow;
-    };
-  }, []);
 
   return (
     <div
@@ -630,7 +669,7 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
                 <form onSubmit={handleAskQuestion} className="pt-4 border-t border-slate-200 flex flex-col gap-3">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-slate-900">
-                      Ask {listing.seller_display_name.split(' ')[0]} something specific...
+                      Ask {listing.seller_display_name ? listing.seller_display_name.split(' ')[0] : 'Seller'} something specific...
                     </span>
                     <span className="text-slate-400 text-[11px]">(Must be campus-related, public log)</span>
                   </div>
@@ -1064,7 +1103,7 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
                   </span>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  When clock reaches 00:00, provisional winner is verified. Seller {listing.seller_display_name.split(' ')[0]} has 4 hours to confirm reservation and coordinate Hostel Quad test inspection.
+                  When clock reaches 00:00, provisional winner is verified. Seller {listing.seller_display_name ? listing.seller_display_name.split(' ')[0] : 'Seller'} has 4 hours to confirm reservation and coordinate Hostel Quad test inspection.
                 </p>
                 <div className="flex items-center gap-2 text-xs text-emerald-700 pt-1 font-medium">
                   <span className="material-symbols-outlined text-sm text-emerald-600">security</span>
