@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { formatRupees, formatTime, getTimeRemaining } from '../utils/formatters';
+import { getWebSocketUrl } from '../utils/ws';
+import { sendBrowserNotification } from '../utils/notifications';
 
 const DEFAULT_PHOTOS = [
   'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=1200&q=80',
@@ -75,6 +77,84 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
     const pollInterval = setInterval(loadData, 2500);
     return () => clearInterval(pollInterval);
   }, [listingId]);
+
+  const wsRef = useRef(null);
+  const previousLeaderIdRef = useRef(null);
+
+  useEffect(() => {
+    if (leader?.leading_bidder_id) {
+      previousLeaderIdRef.current = leader.leading_bidder_id;
+    }
+  }, [leader?.leading_bidder_id]);
+
+  useEffect(() => {
+    const wsUrl = getWebSocketUrl(`/ws/listings/${listingId}`);
+    const socket = new WebSocket(wsUrl);
+    wsRef.current = socket;
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'NEW_BID') {
+          // Prepend new bid in real time
+          setBids((prev) => [data.bid, ...prev.filter((b) => b.id !== data.bid.id)]);
+          // Update leader
+          setLeader((prev) => ({
+            ...prev,
+            current_price: data.bid.amount,
+            leading_bidder_display_name: data.bid.bidder_display_name,
+            leading_bidder_name: data.bid.bidder_display_name,
+            leading_bidder_id: data.bid.bidder_id,
+            has_bids: true,
+            bid_count: data.bid_count,
+            min_next_bid: data.bid.amount + (listing?.min_bid_increment || 50),
+          }));
+
+          // Handle anti-sniping extension
+          if (data.extended) {
+            setListing((prev) => (prev ? { ...prev, closes_at: data.closes_at } : prev));
+            setTimer(getTimeRemaining(data.closes_at));
+            setSuccessMsg('⚡ Clock extended by +60s due to bid in final 30 seconds!');
+
+            if (document.hidden) {
+              sendBrowserNotification('⚡ Anti-Sniping Triggered!', {
+                body: `Auction extended by +60s! New leading bid: ₹${data.bid.amount} by ${data.bid.bidder_display_name}`,
+              });
+            }
+          }
+
+          // Outbid notification if user was leading
+          if (user && previousLeaderIdRef.current === user.id && data.bid.bidder_id !== user.id) {
+            if (document.hidden) {
+              sendBrowserNotification('⚠️ You were Outbid on QuadBid!', {
+                body: `Higher bid of ₹${data.bid.amount} placed by ${data.bid.bidder_display_name}.`,
+              });
+            }
+          }
+        } else if (data.type === 'NEW_QUESTION' || data.type === 'NEW_ANSWER') {
+          api.getQuestions(listingId).then((res) => setQuestions(res)).catch(() => {});
+          if (data.type === 'NEW_ANSWER' && document.hidden) {
+            sendBrowserNotification('💬 Question Answered!', {
+              body: `Seller: "${data.answer_text}"`,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('WS parse error:', err);
+      }
+    };
+
+    const pingInterval = setInterval(() => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send('ping');
+      }
+    }, 20000);
+
+    return () => {
+      clearInterval(pingInterval);
+      socket.close();
+    };
+  }, [listingId, user?.id]);
 
   useEffect(() => {
     if (!listing?.closes_at) return;

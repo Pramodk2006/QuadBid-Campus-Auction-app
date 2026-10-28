@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ..core.security import get_current_user
+from ..core.websocket import manager
 from ..database import SessionLocal
 from ..models import User
 from ..schemas import AnswerCreate, QuestionCreate, QuestionRead
@@ -28,7 +29,7 @@ def get_db() -> Generator[Session, None, None]:
     status_code=status.HTTP_201_CREATED,
     summary="Ask a public question on an auction listing",
 )
-def ask_question(
+async def ask_question(
     listing_id: int,
     payload: QuestionCreate,
     current_user: User = Depends(get_current_user),
@@ -38,12 +39,23 @@ def ask_question(
     Authenticated students can post public questions regarding item condition,
     handover schedule, or accessories before placing bids.
     """
-    return question_service.create_question(
+    result = question_service.create_question(
         db=db,
         listing_id=listing_id,
         asker=current_user,
         question_in=payload,
     )
+    # Broadcast to room
+    await manager.broadcast_listing(listing_id, {
+        "type": "NEW_QUESTION",
+        "listing_id": listing_id,
+        "question": {
+            "id": result["id"],
+            "asker_display_name": result["asker_display_name"],
+            "question_text": result["question_text"],
+        },
+    })
+    return result
 
 
 @router.get(
@@ -67,7 +79,7 @@ def get_questions(
     response_model=QuestionRead,
     summary="Seller answers a public question",
 )
-def answer_question(
+async def answer_question(
     listing_id: int,
     question_id: int,
     payload: AnswerCreate,
@@ -78,10 +90,20 @@ def answer_question(
     Only the listing's seller can post an answer. The answer is posted
     publicly with the seller's display name and timestamp.
     """
-    return question_service.answer_question(
+    result = question_service.answer_question(
         db=db,
         listing_id=listing_id,
         question_id=question_id,
         user=current_user,
         answer_in=payload,
     )
+    # Broadcast to room
+    await manager.broadcast_listing(listing_id, {
+        "type": "NEW_ANSWER",
+        "listing_id": listing_id,
+        "question_id": question_id,
+        "answer_text": result["answer_text"],
+        "answered_by_display_name": result["answered_by_display_name"],
+    })
+    return result
+

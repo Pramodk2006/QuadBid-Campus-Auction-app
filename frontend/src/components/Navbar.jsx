@@ -1,8 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { requestNotificationPermission, getNotificationPermission, sendBrowserNotification } from '../utils/notifications';
 
 export default function Navbar({ onOpenCreate, onOpenAuth, searchQuery, setSearchQuery, activeTab = 'live', setActiveTab }) {
   const { user, isAuthenticated, logout } = useAuth();
+  const [notifStatus, setNotifStatus] = useState(getNotificationPermission);
+
+  const handleToggleNotifications = async () => {
+    const perm = await requestNotificationPermission();
+    setNotifStatus(perm);
+    if (perm === 'granted') {
+      sendBrowserNotification('🎉 QuadBid Notifications Enabled!', {
+        body: 'You will receive instant alerts when outbid or when an auction deadline is extended.',
+      });
+    } else if (perm === 'denied') {
+      alert('Browser notifications are blocked in your browser. Please allow them in site settings.');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200 shadow-sm">
@@ -49,11 +63,26 @@ export default function Navbar({ onOpenCreate, onOpenAuth, searchQuery, setSearc
         {/* Actions & Profile */}
         <div className="flex items-center gap-3.5 shrink-0">
           <button
-            className="relative p-2.5 rounded-xl hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors"
-            title="Notifications"
+            onClick={handleToggleNotifications}
+            className={`relative p-2.5 rounded-xl transition-colors cursor-pointer ${
+              notifStatus === 'granted'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900'
+            }`}
+            title={
+              notifStatus === 'granted'
+                ? 'Browser notifications enabled (Click to test)'
+                : 'Enable browser notifications for live outbid and extension alerts'
+            }
           >
-            <span className="material-symbols-outlined text-[20px]">notifications</span>
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-500 live-indicator"></span>
+            <span className="material-symbols-outlined text-[20px]">
+              {notifStatus === 'granted' ? 'notifications_active' : 'notifications'}
+            </span>
+            <span
+              className={`absolute top-2 right-2 w-2 h-2 rounded-full ${
+                notifStatus === 'granted' ? 'bg-emerald-500' : 'bg-indigo-600'
+              } live-indicator`}
+            ></span>
           </button>
 
           <button

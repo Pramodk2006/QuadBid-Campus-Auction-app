@@ -13,8 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from ..core.security import get_current_user
+from ..core.websocket import manager
 from ..database import SessionLocal
-from ..models import User
+from ..models import User, Bid
 from ..schemas import AuctionLeader, BidCreate, BidPlacementResult, BidRead
 from ..services import bidding_service
 
@@ -27,7 +28,7 @@ def get_db() -> Generator[Session, None, None]:
 
 
 @router.post("/bids", response_model=BidPlacementResult, status_code=status.HTTP_201_CREATED)
-def place_bid(
+async def place_bid(
     listing_id: int,
     payload: BidCreate,
     current_user: User = Depends(get_current_user),
@@ -48,6 +49,46 @@ def place_bid(
         result = bidding_service.place_bid(
             db, listing_id=listing_id, bidder=current_user, amount_rupees=payload.amount
         )
+
+        closes_at_str = (
+            result["new_closes_at"].isoformat()
+            if hasattr(result["new_closes_at"], "isoformat")
+            else str(result["new_closes_at"])
+        )
+        created_at_str = (
+            result["bid"]["created_at"].isoformat()
+            if hasattr(result["bid"]["created_at"], "isoformat")
+            else str(result["bid"]["created_at"])
+        )
+
+        bid_count = db.query(Bid).filter(Bid.listing_id == listing_id).count()
+
+        # Broadcast real-time update to lot room
+        await manager.broadcast_listing(listing_id, {
+            "type": "NEW_BID",
+            "listing_id": listing_id,
+            "bid": {
+                "id": result["bid"]["id"],
+                "amount": result["bid"]["amount"],
+                "bidder_id": result["bid"]["bidder_id"],
+                "bidder_display_name": result["bid"]["bidder_display_name"],
+                "created_at": created_at_str,
+            },
+            "bid_count": bid_count,
+            "closes_at": closes_at_str,
+            "extended": result["extended"],
+            "message": result["message"],
+        })
+
+        # Broadcast to global ticker stream
+        await manager.broadcast_global({
+            "type": "GLOBAL_BID_TICKER",
+            "listing_id": listing_id,
+            "amount": result["bid"]["amount"],
+            "bidder_display_name": result["bid"]["bidder_display_name"],
+            "created_at": created_at_str,
+        })
+
         return result
     except PermissionError as exc:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))

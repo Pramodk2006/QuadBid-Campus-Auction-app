@@ -21,6 +21,7 @@ from .api import auth as auth_router
 from .api import bids as bids_router
 from .api import sales as sales_router
 from .api import questions as questions_router
+from .api import ws as ws_router
 
 # Create all tables on startup (no-op if they already exist)
 Base.metadata.create_all(bind=engine)
@@ -59,6 +60,7 @@ app.include_router(auth_router.router)
 app.include_router(bids_router.router)
 app.include_router(sales_router.router)
 app.include_router(questions_router.router)
+app.include_router(ws_router.router)
 
 
 # ---------------------------------------------------------------------------

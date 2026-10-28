@@ -8,6 +8,8 @@ import CreateListingModal from './components/CreateListingModal';
 import AuthModal from './components/AuthModal';
 import { api } from './api/client';
 import { useAuth } from './context/AuthContext';
+import { getWebSocketUrl } from './utils/ws';
+import { requestNotificationPermission, getNotificationPermission } from './utils/notifications';
 
 export default function App() {
   const { user, isAuthenticated } = useAuth();
@@ -70,11 +72,56 @@ export default function App() {
     fetchListings();
   }, [searchQuery, category, condition, closingSoon, under500, sortBy]);
 
-  // Periodic real-time refresh every 5s
+  // Periodic fallback refresh every 10s
   useEffect(() => {
-    const interval = setInterval(fetchListings, 5000);
+    const interval = setInterval(fetchListings, 10000);
     return () => clearInterval(interval);
   }, [searchQuery, category, condition, closingSoon, under500, sortBy]);
+
+  // Real-time Global Live WebSocket stream
+  useEffect(() => {
+    const wsUrl = getWebSocketUrl('/ws/live');
+    let socket;
+    try {
+      socket = new WebSocket(wsUrl);
+
+      socket.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'GLOBAL_BID_TICKER') {
+            setRecentBids((prev) => [
+              {
+                id: Date.now() + Math.random(),
+                listing_id: data.listing_id,
+                amount: data.amount,
+                bidder_name: data.bidder_name || data.bidder_display_name,
+                bidder_display_name: data.bidder_display_name,
+                created_at: data.created_at,
+              },
+              ...prev.slice(0, 15),
+            ]);
+            // Refresh listings for updated price on listing cards
+            fetchListings();
+          }
+        } catch (err) {
+          console.warn('WS live ticker parse error:', err);
+        }
+      };
+
+      const pingInterval = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send('ping');
+        }
+      }, 20000);
+
+      return () => {
+        clearInterval(pingInterval);
+        socket.close();
+      };
+    } catch (err) {
+      console.warn('Failed to connect to live WS:', err);
+    }
+  }, []);
 
   // Split listings into featured item (first 1 or 2) and sublots
   const featuredItem = listings.length > 0 ? listings[0] : null;

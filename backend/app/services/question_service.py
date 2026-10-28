@@ -133,3 +133,4 @@ def answer_question(
     db.refresh(question)
 
     return _enrich_question(question)
+
