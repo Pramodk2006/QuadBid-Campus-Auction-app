@@ -3,12 +3,27 @@
 > **A high-integrity, real-time auction marketplace built for graduating seniors and incoming university students.**  
 > Features integer-paise financial precision, server-authoritative anti-sniping protection, Vickrey auto-proxy bidding, institutional identity enforcement (`@kongu.edu`), and physical escrow QR handshake verification.
 
-[![CI Backend Tests](https://img.shields.io/badge/pytest-118%2F118%20passed-emerald?style=flat-square&logo=pytest)](file:///c:/My%20Projects/campus_auction/backend/tests)
-[![Frontend Build](https://img.shields.io/badge/vite-production%20ready-indigo?style=flat-square&logo=vite)](file:///c:/My%20Projects/campus_auction/frontend)
-[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](file:///c:/My%20Projects/campus_auction/backend)
-[![React Version](https://img.shields.io/badge/react-19.0-61dafb?style=flat-square&logo=react)](file:///c:/My%20Projects/campus_auction/frontend)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?style=flat-square&logo=fastapi)](file:///c:/My%20Projects/campus_auction/backend)
-[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0%20ORM-red?style=flat-square&logo=sqlalchemy)](file:///c:/My%20Projects/campus_auction/backend/app/models.py)
+[![Live App (Vercel)](https://img.shields.io/badge/Vercel-Live%20Frontend-black?style=for-the-badge&logo=vercel)](https://quad-bid-campus-auction-app.vercel.app/)
+[![API Backend (Render)](https://img.shields.io/badge/Render-Live%20API-46e3b7?style=for-the-badge&logo=render&logoColor=white)](https://quadbid-campus-auction-app.onrender.com)
+[![Database (Supabase)](https://img.shields.io/badge/Supabase-Cloud%20Postgres-3ecf8e?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
+[![CI Backend Tests](https://img.shields.io/badge/pytest-118%2F118%20passed-emerald?style=flat-square&logo=pytest)](https://github.com/Pramodk2006/QuadBid-Campus-Auction-app)
+[![Frontend Build](https://img.shields.io/badge/vite-production%20ready-indigo?style=flat-square&logo=vite)](https://github.com/Pramodk2006/QuadBid-Campus-Auction-app)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue?style=flat-square&logo=python)](https://github.com/Pramodk2006/QuadBid-Campus-Auction-app)
+[![React Version](https://img.shields.io/badge/react-19.0-61dafb?style=flat-square&logo=react)](https://github.com/Pramodk2006/QuadBid-Campus-Auction-app)
+
+---
+
+## 🌐 Live Production Deployments
+
+| Component | Platform | URL | Status |
+| :--- | :--- | :--- | :--- |
+| **Frontend Web App** | **Vercel** | **[https://quad-bid-campus-auction-app.vercel.app/](https://quad-bid-campus-auction-app.vercel.app/)** | 🟢 Live |
+| **Backend REST & WebSockets API** | **Render** | **[https://quadbid-campus-auction-app.onrender.com](https://quadbid-campus-auction-app.onrender.com)** | 🟢 Live |
+| **Interactive API Documentation** | **Swagger UI** | **[https://quadbid-campus-auction-app.onrender.com/docs](https://quadbid-campus-auction-app.onrender.com/docs)** | 🟢 Live |
+| **Cloud Database** | **Supabase** | `aws-1-eu-central-1.pooler.supabase.com:5432` | 🟢 Connected |
+| **Source Code Repository** | **GitHub** | **[https://github.com/Pramodk2006/QuadBid-Campus-Auction-app](https://github.com/Pramodk2006/QuadBid-Campus-Auction-app)** | 🟢 Synchronized |
+
+---
 
 ---
 
