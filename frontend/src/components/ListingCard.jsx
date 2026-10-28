@@ -118,3 +118,4 @@ export default function ListingCard({ listing, onSelect }) {
     </div>
   );
 }
+

@@ -90,3 +90,4 @@ export default function Navbar({ onOpenCreate, onOpenAuth, searchQuery, setSearc
     </header>
   );
 }
+

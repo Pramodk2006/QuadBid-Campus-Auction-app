@@ -50,3 +50,4 @@ export function getTimeRemaining(closesAt) {
     formatted,
   };
 }
+

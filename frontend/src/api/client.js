@@ -105,4 +105,32 @@ export const api = {
   getBidHistory: (listingId) => request(`/listings/${listingId}/bids`),
 
   getAuctionLeader: (listingId) => request(`/listings/${listingId}/leader`),
+
+  // Sale Lifecycle (Phase 4)
+  getSaleOutcome: (listingId) => request(`/listings/${listingId}/outcome`),
+
+  approveSale: (listingId, payload = {}) =>
+    request(`/listings/${listingId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  rejectSale: (listingId, payload = {}) =>
+    request(`/listings/${listingId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  confirmHandover: (listingId, handoverCode) =>
+    request(`/listings/${listingId}/handover`, {
+      method: 'POST',
+      body: JSON.stringify({ handover_code: handoverCode }),
+    }),
+
+  reportSaleIssue: (listingId, payload) =>
+    request(`/listings/${listingId}/report-issue`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };
+

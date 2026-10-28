@@ -145,6 +145,9 @@ class Listing(Base):
     bids: Mapped[list["Bid"]] = relationship(
         "Bid", back_populates="listing", order_by="desc(Bid.created_at)"
     )
+    outcome: Mapped[Optional["SaleOutcome"]] = relationship(
+        "SaleOutcome", back_populates="listing", uselist=False
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -176,4 +179,69 @@ class Bid(Base):
 
     def __repr__(self) -> str:
         return f"<Bid id={self.id} listing={self.listing_id} bidder={self.bidder_id} amount_paise={self.amount_paise}>"
+
+
+# ---------------------------------------------------------------------------
+# SaleOutcome (Phase 4 — Closing and Sale Lifecycle)
+# ---------------------------------------------------------------------------
+
+class SaleOutcome(Base):
+    __tablename__ = "sale_outcomes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+
+    listing_id: Mapped[int] = mapped_column(
+        ForeignKey("listings.id", ondelete="CASCADE"), unique=True, index=True, nullable=False
+    )
+    winning_bid_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("bids.id", ondelete="SET NULL"), nullable=True
+    )
+    winner_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True, nullable=True
+    )
+    seller_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True, nullable=False
+    )
+
+    final_price_paise: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Lifecycle states:
+    #   unsold             - 0 bids when auction closed
+    #   pending_approval   - auction closed with bids, awaiting seller decision
+    #   approved           - seller approved winning price; item reserved
+    #   rejected           - seller rejected winning price
+    #   seller_cancelled   - seller cancelled after reservation
+    #   failed_pickup      - buyer did not show or failed inspection
+    #   completed          - campus handover verified with handshake code
+    status: Mapped[str] = mapped_column(
+        String(30), default="pending_approval", index=True, nullable=False
+    )
+
+    # 4-6 char handshake code generated upon seller approval, e.g. "QUAD-8392"
+    handover_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
+    handover_location: Mapped[Optional[str]] = mapped_column(
+        String(150), default="Hostel Quad / Common Room", nullable=True
+    )
+    seller_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    decided_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    # Relationships
+    listing: Mapped["Listing"] = relationship("Listing", back_populates="outcome")
+    winner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[winner_id])
+    seller: Mapped["User"] = relationship("User", foreign_keys=[seller_id])
+    winning_bid: Mapped[Optional["Bid"]] = relationship("Bid", foreign_keys=[winning_bid_id])
+
+    def __repr__(self) -> str:
+        return f"<SaleOutcome id={self.id} listing={self.listing_id} status={self.status} price_paise={self.final_price_paise}>"
+
 

@@ -289,3 +289,77 @@ class BidPlacementResult(BaseModel):
     new_closes_at: datetime
     message: str
 
+
+# ---------------------------------------------------------------------------
+# Sale Outcome schemas (Phase 4 — Closing & Sale Lifecycle)
+# ---------------------------------------------------------------------------
+
+SALE_OUTCOME_STATUSES = Literal[
+    "unsold",
+    "pending_approval",
+    "approved",
+    "rejected",
+    "seller_cancelled",
+    "failed_pickup",
+    "completed",
+]
+
+
+class SaleOutcomeRead(BaseModel):
+    """Details of an auction lot's resolution and handover."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    listing_id: int
+    winning_bid_id: Optional[int] = None
+    winner_id: Optional[int] = None
+    winner_display_name: Optional[str] = None
+    seller_id: int
+    seller_display_name: str
+    final_price: float           # in ₹
+    status: str
+    handover_code: Optional[str] = None
+    handover_location: Optional[str] = None
+    seller_notes: Optional[str] = None
+    decided_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class SellerApprovalRequest(BaseModel):
+    """Payload for POST /api/listings/{id}/approve"""
+    handover_location: Optional[str] = Field(
+        default="Hostel Quad / Common Room",
+        max_length=150,
+        description="Agreed physical meetup location on campus",
+    )
+    seller_notes: Optional[str] = Field(
+        default=None,
+        max_length=500,
+        description="Handover instructions for buyer (e.g. Call when outside H-4)",
+    )
+
+
+class SellerRejectionRequest(BaseModel):
+    """Payload for POST /api/listings/{id}/reject"""
+    reason: Optional[str] = Field(
+        default="Reserve price not met by market demand",
+        max_length=300,
+    )
+
+
+class HandoverConfirmRequest(BaseModel):
+    """Payload for POST /api/listings/{id}/handover"""
+    handover_code: str = Field(
+        min_length=4,
+        max_length=20,
+        description="Physical verification code exchanged during handover",
+    )
+
+
+class ReportIssueRequest(BaseModel):
+    """Payload for POST /api/listings/{id}/report-issue"""
+    issue_type: Literal["failed_pickup", "seller_cancelled"]
+    reason: Optional[str] = Field(default=None, max_length=500)
+
+
