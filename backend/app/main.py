@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
+from .core.config import settings
 from .database import Base, engine
 from .api import listings as listings_router
 from .api import auth as auth_router
