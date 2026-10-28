@@ -254,3 +254,4 @@ def get_auction_leader(db: Session, listing_id: int) -> dict:
         "closes_at": listing.closes_at,
         "is_closed": is_closed,
     }
+

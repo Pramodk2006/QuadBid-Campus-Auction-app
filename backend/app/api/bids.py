@@ -77,3 +77,4 @@ def get_auction_leader(listing_id: int, db: Session = Depends(get_db)):
         return bidding_service.get_auction_leader(db, listing_id=listing_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+

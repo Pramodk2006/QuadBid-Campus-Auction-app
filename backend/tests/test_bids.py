@@ -291,3 +291,4 @@ class TestListingProtectionWhenBidsExist:
         )
         assert resp.status_code == 200
         assert "original charger" in resp.json()["description"]
+
