@@ -36,7 +36,7 @@ import urllib.parse
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
@@ -77,8 +77,21 @@ def get_db():
 # Step 1 — Get the Google OAuth URL
 # ---------------------------------------------------------------------------
 
+def _get_redirect_uri(request: Request) -> str:
+    """Dynamically determine the OAuth callback URI based on deployment environment."""
+    if settings.GOOGLE_REDIRECT_URI and "localhost" not in settings.GOOGLE_REDIRECT_URI:
+        return settings.GOOGLE_REDIRECT_URI
+
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    if "render.com" in host or settings.ENVIRONMENT == "production":
+        clean_host = host if host else "quadbid-campus-auction-app.onrender.com"
+        return f"https://{clean_host}/api/auth/google/callback"
+
+    return settings.GOOGLE_REDIRECT_URI
+
+
 @router.get("/google", summary="Get Google OAuth login URL")
-def google_login():
+def google_login(request: Request):
     """
     Returns the URL the frontend should redirect the browser to.
     After the user approves, Google redirects to /api/auth/google/callback.
@@ -93,9 +106,11 @@ def google_login():
         and settings.GOOGLE_CLIENT_SECRET != "YOUR_GOOGLE_CLIENT_SECRET"
     )
 
+    redirect_uri = _get_redirect_uri(request)
+
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
-        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+        "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": GOOGLE_SCOPES,
         "hd": settings.COLLEGE_EMAIL_DOMAIN,  # hint to Google: only show kongu.edu accounts
@@ -108,7 +123,7 @@ def google_login():
         "auth_url": auth_url,
         "is_configured": is_configured,
         "client_id": settings.GOOGLE_CLIENT_ID if is_configured else None,
-        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+        "redirect_uri": redirect_uri,
         "college_domain": settings.COLLEGE_EMAIL_DOMAIN,
     }
 
@@ -119,6 +134,7 @@ def google_login():
 
 @router.get("/google/callback", summary="Handle Google OAuth callback")
 async def google_callback(
+    request: Request,
     code: str = Query(description="Authorization code from Google"),
     db: Session = Depends(get_db),
 ):
@@ -128,6 +144,8 @@ async def google_callback(
       - Existing users: return access_token and redirect to frontend.
       - New users: return setup_token and redirect to frontend profile completion.
     """
+    redirect_uri = _get_redirect_uri(request)
+
     # 1. Exchange code for Google access token
     async with httpx.AsyncClient() as client:
         token_resp = await client.post(
@@ -136,7 +154,7 @@ async def google_callback(
                 "code": code,
                 "client_id": settings.GOOGLE_CLIENT_ID,
                 "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+                "redirect_uri": redirect_uri,
                 "grant_type": "authorization_code",
             },
         )
