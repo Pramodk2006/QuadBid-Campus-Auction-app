@@ -37,7 +37,25 @@ async function request(endpoint, options = {}) {
   const data = isJson ? await response.json() : await response.text();
 
   if (!response.ok) {
-    const errorMsg = data?.detail || data?.message || response.statusText || 'Request failed';
+    let errorMsg = response.statusText || 'Request failed';
+    if (data?.detail) {
+      if (Array.isArray(data.detail)) {
+        // FastAPI 422 validation errors array: [{ loc: [...], msg: "..." }]
+        errorMsg = data.detail
+          .map((item) => {
+            if (typeof item === 'string') return item;
+            const field = item.loc && item.loc.length > 1 ? `${item.loc[item.loc.length - 1]}: ` : '';
+            return `${field}${item.msg || JSON.stringify(item)}`;
+          })
+          .join('; ');
+      } else if (typeof data.detail === 'string') {
+        errorMsg = data.detail;
+      } else {
+        errorMsg = JSON.stringify(data.detail);
+      }
+    } else if (data?.message) {
+      errorMsg = typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+    }
     throw new Error(errorMsg);
   }
 

@@ -130,6 +130,8 @@ class ListingCreate(BaseModel):
     @classmethod
     def parse_closes_at(cls, v):
         if isinstance(v, str):
+            if v.endswith("Z"):
+                v = v[:-1] + "+00:00"
             v = datetime.fromisoformat(v)
         return v
 
@@ -176,6 +178,8 @@ class ListingUpdate(BaseModel):
     @classmethod
     def parse_optional_closes_at(cls, v):
         if v is not None and isinstance(v, str):
+            if v.endswith("Z"):
+                v = v[:-1] + "+00:00"
             v = datetime.fromisoformat(v)
         return v
 

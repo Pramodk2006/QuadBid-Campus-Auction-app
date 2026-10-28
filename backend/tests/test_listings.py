@@ -48,6 +48,13 @@ class TestCreateListing:
         assert data["starting_price"] == 1499.99
         assert data["min_bid_increment"] == 50.5
 
+    def test_create_listing_with_iso_z_timestamp(self, auth_client):
+        """JavaScript's toISOString() ends with 'Z' (e.g. 2026-12-31T18:00:00.000Z). Must be accepted."""
+        payload = {**VALID_LISTING, "closes_at": "2026-12-31T18:00:00.000Z"}
+        response = auth_client.post("/api/listings", json=payload)
+        assert response.status_code == 201
+        assert response.json()["status"] == "active"
+
     def test_create_all_categories(self, auth_client):
         for cat in ["cycle", "calculator", "books", "electronics", "other"]:
             payload = {**VALID_LISTING, "category": cat, "title": f"Item for {cat}"}
