@@ -110,6 +110,34 @@ def create_listing(db: Session, payload: ListingCreate, seller_id: int) -> dict:
     db.add(listing)
     db.commit()
     db.refresh(listing)
+
+    # Check and match against student SavedSearch keyword alerts
+    try:
+        from ..models import SavedSearch
+        search_stmt = select(SavedSearch)
+        all_searches = db.execute(search_stmt).scalars().all()
+        matched_user_ids = []
+        for s in all_searches:
+            if s.user_id == seller_id:
+                continue
+            if s.category and s.category != payload.category:
+                continue
+            if s.max_price_paise and listing.starting_price_paise > s.max_price_paise:
+                continue
+            kw = s.query.lower().strip()
+            item_text = f"{listing.title} {listing.description}".lower()
+            if kw in item_text:
+                matched_user_ids.append(s.user_id)
+
+        if matched_user_ids:
+            import logging
+            alert_logger = logging.getLogger("quadbid.alerts")
+            alert_logger.info(
+                f"📢 Lot #{listing.id} ('{listing.title}') matched keyword alerts for {len(matched_user_ids)} student(s): {matched_user_ids}"
+            )
+    except Exception as e:
+        pass
+
     return _enrich(listing, db)
 
 

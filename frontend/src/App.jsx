@@ -541,6 +541,7 @@ export default function App() {
           onClose={() => setIsWatchlistOpen(false)}
           onSelectLot={(id) => setSelectedListingId(id)}
           onWatchlistChange={(count) => setWatchlistCount(count)}
+          listings={listings}
         />
       )}
 

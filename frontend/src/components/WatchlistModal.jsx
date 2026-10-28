@@ -3,7 +3,7 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { formatRupees, getTimeRemaining } from '../utils/formatters';
 
-export default function WatchlistModal({ onClose, onSelectLot, onWatchlistChange }) {
+export default function WatchlistModal({ onClose, onSelectLot, onWatchlistChange, listings = [] }) {
   const { isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('watched'); // 'watched' | 'alerts'
   const [watchlist, setWatchlist] = useState([]);
@@ -273,33 +273,77 @@ export default function WatchlistModal({ onClose, onSelectLot, onWatchlistChange
                 {alerts.length === 0 ? (
                   <p className="text-xs text-slate-500 italic">No keyword alerts configured yet.</p>
                 ) : (
-                  alerts.map((al) => (
-                    <div
-                      key={al.id}
-                      className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between gap-3 text-xs"
-                    >
-                      <div>
-                        <span className="font-bold text-slate-900">"{al.query}"</span>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5 font-mono">
-                          <span>Category: {al.category || 'All'}</span>
-                          {al.max_price && (
-                            <>
-                              <span>•</span>
-                              <span>Under {formatRupees(al.max_price)}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAlert(al.id)}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-                        title="Delete Alert"
+                  alerts.map((al) => {
+                    const matches = listings.filter((item) => {
+                      if (al.category && item.category !== al.category) return false;
+                      const price = item.current_price || item.starting_price;
+                      if (al.max_price && price > al.max_price) return false;
+                      const text = `${item.title} ${item.description}`.toLowerCase();
+                      return text.includes(al.query.toLowerCase());
+                    });
+
+                    return (
+                      <div
+                        key={al.id}
+                        className="p-3 bg-white rounded-xl border border-slate-200 flex flex-col gap-2 text-xs"
                       >
-                        <span className="material-symbols-outlined text-base">close</span>
-                      </button>
-                    </div>
-                  ))
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900 font-headline">"{al.query}"</span>
+                              {matches.length > 0 ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 font-mono">
+                                  {matches.length} matching active
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 font-mono">
+                                  Monitoring catalog
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5 font-mono">
+                              <span>Category: {al.category || 'All'}</span>
+                              {al.max_price && (
+                                <>
+                                  <span>•</span>
+                                  <span>Under {formatRupees(al.max_price)}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAlert(al.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                            title="Delete Alert"
+                          >
+                            <span className="material-symbols-outlined text-base">close</span>
+                          </button>
+                        </div>
+
+                        {/* Matching Lots Quick Previews */}
+                        {matches.length > 0 && (
+                          <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-1.5">
+                            <span className="text-[10px] text-slate-400 self-center">Matches:</span>
+                            {matches.map((m) => (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => {
+                                  onClose();
+                                  onSelectLot(m.id);
+                                }}
+                                className="px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-[10px] font-bold font-mono transition-colors cursor-pointer flex items-center gap-1"
+                              >
+                                <span>#{m.id} {m.title.slice(0, 20)}...</span>
+                                <span className="text-slate-900 font-bold">{formatRupees(m.current_price || m.starting_price)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
