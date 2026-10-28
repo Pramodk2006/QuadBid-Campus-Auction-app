@@ -15,13 +15,22 @@ Why SQLite for dev?
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from .core.config import settings
 
-DATABASE_URL = "sqlite:///./quadbid.db"
+# In production with Supabase, DATABASE_URL is injected via environment variables.
+# Supabase URLs often start with postgres://, which SQLAlchemy 2.0 requires as postgresql://
+database_url = settings.DATABASE_URL
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+connect_args = {}
+if database_url.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
 
 engine = create_engine(
-    DATABASE_URL,
-    # SQLite default blocks cross-thread access; we manage safety via sessions
-    connect_args={"check_same_thread": False},
+    database_url,
+    connect_args=connect_args,
+    pool_pre_ping=True,
 )
 
 # expire_on_commit=False: keep attributes accessible after session.commit()

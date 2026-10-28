@@ -26,6 +26,7 @@ from .api import questions as questions_router
 from .api import ws as ws_router
 from .api import upload as upload_router
 from .api import watchlist as watchlist_router
+from .api import ai as ai_router
 
 # Create all tables on startup (no-op if they already exist)
 Base.metadata.create_all(bind=engine)
@@ -50,7 +51,9 @@ app.add_middleware(
         "http://localhost:5173",   # Vite dev server
         "http://127.0.0.1:5173",
         "http://localhost:3000",   # fallback CRA port
+        "https://quadbid.vercel.app",
     ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -67,6 +70,7 @@ app.include_router(questions_router.router)
 app.include_router(ws_router.router)
 app.include_router(upload_router.router)
 app.include_router(watchlist_router.router)
+app.include_router(ai_router.router)
 
 # ---------------------------------------------------------------------------
 # Static Files — Serve uploaded inspection photos

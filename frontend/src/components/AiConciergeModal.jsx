@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { api } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { formatRupees, getTimeRemaining } from '../utils/formatters';
 
 const SUGGESTIONS = [
@@ -6,64 +8,107 @@ const SUGGESTIONS = [
   'Scientific calculator for university exams',
   'Textbooks and notes for semester prep',
   'Wireless mouse or dorm accessories',
+  'Drafter or drawing kit under 400',
 ];
 
 export default function AiConciergeModal({ onClose, listings = [], onSelectLot }) {
+  const { isAuthenticated } = useAuth();
   const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(null);
   const [messages, setMessages] = useState([
     {
       sender: 'ai',
-      text: 'Hello! I am your QuadBid Campus Concierge. Tell me what you are looking for (e.g., "Find me a cycle under ₹1500" or "Do we have calculators available?"). I will search active and closing lots across all 9 campus hostels.',
+      text: 'Hello! I am your QuadBid Campus Concierge powered by semantic AI. Tell me what you are looking for (e.g., "Find me a cycle under ₹1500" or "Do we have calculators available?"). I will analyze student listings across campus and let you know if items are available or strictly not found.',
       recommendations: [],
+      isAvailable: true,
     },
   ]);
 
-  const handleSearch = (searchQuery) => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return;
+  const handleSearch = async (searchQuery) => {
+    const q = searchQuery.trim();
+    if (!q || loading) return;
 
-    // Add user message
-    const userMsg = { sender: 'user', text: searchQuery };
-
-    // Intelligent query analysis
-    let maxPrice = null;
-    const priceMatch = q.match(/(?:under|below|less than|within|max)\s*(?:₹|rs\.?|inr)?\s*(\d+)/i);
-    if (priceMatch) {
-      maxPrice = parseFloat(priceMatch[1]);
-    }
-
-    // Match keywords against listing title, category, description
-    const keywords = q
-      .replace(/(?:under|below|less than|within|max|\d+|find|me|a|an|the|looking|for|show|is|there|any)/gi, '')
-      .trim()
-      .split(/\s+/)
-      .filter((w) => w.length > 2);
-
-    const matches = listings.filter((item) => {
-      const price = item.current_price || item.starting_price;
-      if (maxPrice !== null && price > maxPrice) return false;
-
-      if (keywords.length === 0) return true;
-
-      const searchableText = `${item.title} ${item.category} ${item.description}`.toLowerCase();
-      return keywords.some((kw) => searchableText.includes(kw));
-    });
-
-    let aiText = '';
-    if (matches.length > 0) {
-      aiText = `I found ${matches.length} campus ${matches.length === 1 ? 'lot' : 'lots'} matching your query "${searchQuery}":`;
-    } else {
-      aiText = `I could not find an exact match for "${searchQuery}" right now. Try expanding your search or saving a keyword alert in your Watchlist.`;
-    }
-
-    const aiMsg = {
-      sender: 'ai',
-      text: aiText,
-      recommendations: matches.slice(0, 4),
-    };
-
-    setMessages((prev) => [...prev, userMsg, aiMsg]);
+    // Add user message immediately
+    const userMsg = { sender: 'user', text: q };
+    setMessages((prev) => [...prev, userMsg]);
     setQuery('');
+    setLoading(true);
+
+    try {
+      // Call backend AI Concierge (Gemini LLM + collegiate semantic ontology)
+      const res = await api.askAiConcierge(q);
+
+      // Match recommended IDs back to client listings for full card previews
+      const matchedLots = (res.recommended_listing_ids || [])
+        .map((id) => listings.find((item) => Number(item.id) === Number(id)))
+        .filter(Boolean);
+
+      const aiMsg = {
+        sender: 'ai',
+        text: res.reply,
+        recommendations: matchedLots,
+        isAvailable: res.is_available,
+        queryPrompt: q,
+      };
+
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch (err) {
+      console.warn('AI Concierge backend call failed, falling back to local search:', err);
+
+      // Graceful local semantic fallback
+      const qLower = q.toLowerCase();
+      let maxPrice = null;
+      const priceMatch = qLower.match(/(?:under|below|less than|within|max)\s*(?:₹|rs\.?|inr)?\s*(\d+)/i);
+      if (priceMatch) {
+        maxPrice = parseFloat(priceMatch[1]);
+      }
+
+      const keywords = qLower
+        .replace(/(?:under|below|less than|within|max|\d+|find|me|a|an|the|looking|for|show|is|there|any)/gi, '')
+        .trim()
+        .split(/\s+/)
+        .filter((w) => w.length > 2);
+
+      const matches = listings.filter((item) => {
+        const price = item.current_price || item.starting_price;
+        if (maxPrice !== null && price > maxPrice) return false;
+        if (keywords.length === 0) return false;
+        const searchableText = `${item.title} ${item.category} ${item.description}`.toLowerCase();
+        return keywords.some((kw) => searchableText.includes(kw));
+      });
+
+      const isAvail = matches.length > 0;
+      const aiText = isAvail
+        ? `I found ${matches.length} campus ${matches.length === 1 ? 'lot' : 'lots'} matching your query "${q}":`
+        : `Not Available: No active campus auction lots currently match "${q}".`;
+
+      const aiMsg = {
+        sender: 'ai',
+        text: aiText,
+        recommendations: matches.slice(0, 4),
+        isAvailable: isAvail,
+        queryPrompt: q,
+      };
+
+      setMessages((prev) => [...prev, aiMsg]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateWatchlistAlert = async (searchKw) => {
+    if (!isAuthenticated) {
+      alert('Please sign in to save search keyword alerts.');
+      return;
+    }
+    try {
+      await api.createSavedSearch({ keyword: searchKw });
+      setSavedSuccess(`Alert created for "${searchKw}"! You'll be notified when a junior/senior posts it.`);
+      setTimeout(() => setSavedSuccess(null), 4000);
+    } catch (err) {
+      alert(err.message || 'Failed to create alert');
+    }
   };
 
   return (
@@ -81,8 +126,13 @@ export default function AiConciergeModal({ onClose, listings = [], onSelectLot }
               <span className="material-symbols-outlined text-lg">smart_toy</span>
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 font-headline">AI Campus Concierge</h2>
-              <p className="text-xs text-slate-500">Natural language inventory assistant for hostel quad lots</p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 font-headline">AI Campus Concierge</h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-indigo-100 text-indigo-700">
+                  Semantic LLM
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">Natural language inventory assistant with strict catalog guardrails</p>
             </div>
           </div>
           <button
@@ -100,13 +150,22 @@ export default function AiConciergeModal({ onClose, listings = [], onSelectLot }
             <button
               key={idx}
               type="button"
+              disabled={loading}
               onClick={() => handleSearch(s)}
-              className="px-2.5 py-1 rounded-full bg-white hover:bg-indigo-600 hover:text-white border border-indigo-200 text-slate-700 text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer shadow-2xs"
+              className="px-2.5 py-1 rounded-full bg-white hover:bg-indigo-600 hover:text-white border border-indigo-200 text-slate-700 text-[11px] font-medium whitespace-nowrap transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
             >
               {s}
             </button>
           ))}
         </div>
+
+        {/* Alert Feedback Banner */}
+        {savedSuccess && (
+          <div className="px-6 py-2 bg-emerald-50 border-b border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm text-emerald-600">notifications_active</span>
+            <span className="font-medium">{savedSuccess}</span>
+          </div>
+        )}
 
         {/* Chat / Message Stream */}
         <div className="p-6 overflow-y-auto flex-1 space-y-4">
@@ -122,7 +181,37 @@ export default function AiConciergeModal({ onClose, listings = [], onSelectLot }
                     : 'bg-slate-100 text-slate-800 rounded-bl-xs border border-slate-200/80'
                 }`}
               >
-                <p>{m.text}</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-bold text-[10px] uppercase font-mono tracking-wider opacity-75">
+                    {m.sender === 'user' ? 'You' : 'Concierge'}
+                  </span>
+                  {m.sender === 'ai' && m.isAvailable === false && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200 font-mono">
+                      Not Available
+                    </span>
+                  )}
+                  {m.sender === 'ai' && m.isAvailable === true && m.recommendations && m.recommendations.length > 0 && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 font-mono">
+                      In Stock
+                    </span>
+                  )}
+                </div>
+                <p className="whitespace-pre-line">{m.text}</p>
+
+                {/* Not Available Watchlist CTA */}
+                {m.sender === 'ai' && m.isAvailable === false && m.queryPrompt && (
+                  <div className="mt-3 pt-3 border-t border-slate-200/80 flex items-center justify-between gap-3">
+                    <span className="text-[11px] text-slate-500">Want an alert when someone posts this?</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCreateWatchlistAlert(m.queryPrompt)}
+                      className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[13px]">add_alert</span>
+                      <span>Create Alert</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Recommendation Cards */}
@@ -177,6 +266,13 @@ export default function AiConciergeModal({ onClose, listings = [], onSelectLot }
               )}
             </div>
           ))}
+
+          {loading && (
+            <div className="flex items-center gap-2 text-xs text-indigo-600 font-medium py-2">
+              <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+              <span>Campus Concierge is scanning active lots...</span>
+            </div>
+          )}
         </div>
 
         {/* Input Bar */}
@@ -191,12 +287,14 @@ export default function AiConciergeModal({ onClose, listings = [], onSelectLot }
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            disabled={loading}
             placeholder="Ask AI: 'find me a scientific calculator' or 'cycles under ₹2000'..."
-            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 transition-all disabled:opacity-50"
           />
           <button
             type="submit"
-            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+            disabled={loading || !query.trim()}
+            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
           >
             <span className="material-symbols-outlined text-sm">send</span>
             <span>Ask</span>

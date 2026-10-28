@@ -5,7 +5,7 @@
  * on every authenticated request.
  */
 
-const BASE_URL = '/api';
+const BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
 
 export function getAuthToken() {
   return localStorage.getItem('quadbid_token');
@@ -239,6 +239,13 @@ export const api = {
     request(`/listings/${listingId}/proxy-bid`, {
       method: 'POST',
       body: JSON.stringify({ max_ceiling: maxCeiling }),
+    }),
+
+  // AI Concierge
+  askAiConcierge: (query) =>
+    request('/ai/concierge', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
     }),
 };
 

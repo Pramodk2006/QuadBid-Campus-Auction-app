@@ -12,6 +12,7 @@ For prod: set env vars directly (no .env file on server).
 
 import secrets
 from pathlib import Path
+from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
@@ -58,6 +59,10 @@ class Settings(BaseSettings):
 
     # ── Database ──────────────────────────────────────────────────────────
     DATABASE_URL: str = "sqlite:///./quadbid.db"
+
+    # ── AI LLM Semantic Assistant ──────────────────────────────────────────
+    GEMINI_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
 
 
 settings = Settings()

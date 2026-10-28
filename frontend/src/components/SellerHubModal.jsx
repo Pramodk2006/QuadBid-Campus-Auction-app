@@ -11,12 +11,16 @@ export default function SellerHubModal({
   const { user, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('seller'); // 'seller' | 'bids'
 
-  const myListings = listings.filter(
-    (l) => user && (l.seller_id === user.id || (user.display_name && l.seller_display_name === user.display_name))
-  );
-  const otherListings = listings.filter(
-    (l) => !user || (l.seller_id !== user.id && l.seller_display_name !== user.display_name)
-  );
+  const isMyLot = (l) => {
+    if (!user) return false;
+    if (l.seller_id != null && user.id != null && Number(l.seller_id) === Number(user.id)) return true;
+    if (user.display_name && l.seller_display_name && l.seller_display_name === user.display_name) return true;
+    if (user.roll_number && l.seller_display_name && l.seller_display_name.includes(user.roll_number)) return true;
+    return false;
+  };
+
+  const myListings = listings.filter(isMyLot);
+  const otherListings = listings.filter((l) => !isMyLot(l));
 
   return (
     <div
