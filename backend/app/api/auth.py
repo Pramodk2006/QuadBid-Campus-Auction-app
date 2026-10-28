@@ -32,6 +32,7 @@ Security notes:
 """
 
 import os
+import urllib.parse
 from typing import Optional
 
 import httpx
@@ -85,6 +86,13 @@ def google_login():
     The `hd` (hosted domain) parameter restricts login to @kongu.edu accounts only
     at the Google consent screen level — a first line of defence before our own check.
     """
+    is_configured = (
+        bool(settings.GOOGLE_CLIENT_ID)
+        and settings.GOOGLE_CLIENT_ID != "YOUR_GOOGLE_CLIENT_ID"
+        and bool(settings.GOOGLE_CLIENT_SECRET)
+        and settings.GOOGLE_CLIENT_SECRET != "YOUR_GOOGLE_CLIENT_SECRET"
+    )
+
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": settings.GOOGLE_REDIRECT_URI,
@@ -96,7 +104,13 @@ def google_login():
     }
     query_string = "&".join(f"{k}={v}" for k, v in params.items())
     auth_url = f"{GOOGLE_AUTH_URL}?{query_string}"
-    return {"auth_url": auth_url}
+    return {
+        "auth_url": auth_url,
+        "is_configured": is_configured,
+        "client_id": settings.GOOGLE_CLIENT_ID if is_configured else None,
+        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+        "college_domain": settings.COLLEGE_EMAIL_DOMAIN,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -111,8 +125,8 @@ async def google_callback(
     """
     Exchange the authorization code for user info, then:
       - Reject non-@kongu.edu emails.
-      - Existing users: return access_token immediately.
-      - New users: return setup_token for profile completion.
+      - Existing users: return access_token and redirect to frontend.
+      - New users: return setup_token and redirect to frontend profile completion.
     """
     # 1. Exchange code for Google access token
     async with httpx.AsyncClient() as client:
@@ -128,10 +142,8 @@ async def google_callback(
         )
 
     if token_resp.status_code != 200:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to exchange authorization code with Google",
-        )
+        err_msg = urllib.parse.quote("Failed to exchange authorization code with Google")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/?auth_error={err_msg}")
 
     token_data = token_resp.json()
     google_access_token = token_data.get("access_token")
@@ -144,10 +156,8 @@ async def google_callback(
         )
 
     if profile_resp.status_code != 200:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to fetch user profile from Google",
-        )
+        err_msg = urllib.parse.quote("Failed to fetch user profile from Google")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/?auth_error={err_msg}")
 
     profile = profile_resp.json()
     google_id: str = profile["sub"]
@@ -157,10 +167,8 @@ async def google_callback(
 
     # 3. Enforce college email domain
     if not user_service.validate_college_email(email):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Only @{settings.COLLEGE_EMAIL_DOMAIN} email addresses are allowed",
-        )
+        err_msg = urllib.parse.quote(f"Only @{settings.COLLEGE_EMAIL_DOMAIN} email addresses are allowed")
+        return RedirectResponse(url=f"{settings.FRONTEND_URL}/?auth_error={err_msg}")
 
     # 4. Check if user already exists
     existing_user = user_service.get_user_by_google_id(db, google_id)
@@ -172,30 +180,23 @@ async def google_callback(
             db.commit()
 
         if existing_user.is_profile_complete:
-            # Fully registered — issue access token
+            # Fully registered — issue access token and redirect to frontend
             access_token = create_access_token(existing_user.id)
-            return TokenResponse(
-                access_token=access_token,
-                user=UserRead.model_validate(existing_user),
-            )
+            return RedirectResponse(url=f"{settings.FRONTEND_URL}/?token={access_token}")
         else:
             # Google auth done but profile not complete yet
             setup_token = create_setup_token(google_id, email, name, avatar_url)
-            return SetupTokenResponse(
-                setup_token=setup_token,
-                email=email,
-                name=name,
-                avatar_url=avatar_url,
+            enc_name = urllib.parse.quote(name)
+            return RedirectResponse(
+                url=f"{settings.FRONTEND_URL}/?setup_token={setup_token}&email={email}&name={enc_name}"
             )
 
     # 5. New user — create record and issue setup token
     new_user = user_service.create_user_from_google(db, google_id, email, name, avatar_url)
     setup_token = create_setup_token(google_id, email, name, avatar_url)
-    return SetupTokenResponse(
-        setup_token=setup_token,
-        email=email,
-        name=name,
-        avatar_url=avatar_url,
+    enc_name = urllib.parse.quote(name)
+    return RedirectResponse(
+        url=f"{settings.FRONTEND_URL}/?setup_token={setup_token}&email={email}&name={enc_name}"
     )
 
 

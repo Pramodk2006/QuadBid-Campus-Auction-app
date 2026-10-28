@@ -2,8 +2,8 @@ import React, { useState, useRef } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
-export default function CreateListingModal({ onClose, onCreated }) {
-  const { user } = useAuth();
+export default function CreateListingModal({ onClose, onCreated, onOpenAuth }) {
+  const { user, isAuthenticated } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
@@ -82,6 +82,11 @@ export default function CreateListingModal({ onClose, onCreated }) {
     e.preventDefault();
     setError(null);
 
+    if (!isAuthenticated || !user) {
+      setError('You must sign in with your verified campus account before listing an item.');
+      return;
+    }
+
     if (!formData.title.trim()) {
       setError('Please provide an item title');
       return;
@@ -154,14 +159,47 @@ export default function CreateListingModal({ onClose, onCreated }) {
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
-          {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2">
-              <span className="material-symbols-outlined text-rose-600 text-base">error</span>
-              <span>{error}</span>
+        {/* Body */}
+        {!isAuthenticated || !user ? (
+          <div className="p-8 text-center space-y-4 my-auto">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center mx-auto shadow-xs">
+              <span className="material-symbols-outlined text-3xl">lock</span>
             </div>
-          )}
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-slate-900">Campus Identity Required to List Items</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                To guarantee safe in-person physical quad handovers, only verified students with an authenticated <code className="px-1 py-0.5 rounded bg-slate-100 font-mono font-semibold text-slate-800">@kongu.edu</code> account can create auction listings.
+              </p>
+            </div>
+            <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center max-w-xs mx-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  if (onOpenAuth) onOpenAuth();
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">login</span>
+                <span>Sign In with College ID</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full sm:w-auto py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs border border-slate-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+            {error && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2">
+                <span className="material-symbols-outlined text-rose-600 text-base">error</span>
+                <span>{error}</span>
+              </div>
+            )}
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -414,6 +452,7 @@ export default function CreateListingModal({ onClose, onCreated }) {
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

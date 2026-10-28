@@ -37,8 +37,16 @@ async function request(endpoint, options = {}) {
   const data = isJson ? await response.json() : await response.text();
 
   if (!response.ok) {
+    if (response.status === 401) {
+      setAuthToken(null);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('quadbid_unauthorized'));
+      }
+    }
     let errorMsg = response.statusText || 'Request failed';
-    if (data?.detail) {
+    if (response.status === 401) {
+      errorMsg = 'Campus authentication required. Please sign in with your @kongu.edu student account to proceed.';
+    } else if (data?.detail) {
       if (Array.isArray(data.detail)) {
         // FastAPI 422 validation errors array: [{ loc: [...], msg: "..." }]
         errorMsg = data.detail

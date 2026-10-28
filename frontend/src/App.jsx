@@ -15,7 +15,7 @@ import { getWebSocketUrl } from './utils/ws';
 import { requestNotificationPermission, getNotificationPermission } from './utils/notifications';
 
 export default function App() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, loginWithToken } = useAuth();
   const [listings, setListings] = useState([]);
   const [recentBids, setRecentBids] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,10 +35,47 @@ export default function App() {
   const [selectedListingId, setSelectedListingId] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [setupTokenData, setSetupTokenData] = useState(null);
   const [isWatchlistOpen, setIsWatchlistOpen] = useState(false);
   const [isAiConciergeOpen, setIsAiConciergeOpen] = useState(false);
   const [isSellerHubOpen, setIsSellerHubOpen] = useState(false);
   const [watchlistCount, setWatchlistCount] = useState(0);
+
+  // Handle OAuth callback tokens or unauthorized events
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setIsAuthOpen(true);
+    };
+    window.addEventListener('quadbid_unauthorized', handleUnauthorized);
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      const setupToken = params.get('setup_token');
+      const email = params.get('email');
+      const name = params.get('name');
+      const authError = params.get('auth_error');
+
+      if (token) {
+        loginWithToken(token).then(() => {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        });
+      } else if (setupToken) {
+        setSetupTokenData({ setup_token: setupToken, email: email || '', name: name || '' });
+        setIsAuthOpen(true);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (authError) {
+        setError(`Google Authentication: ${decodeURIComponent(authError)}`);
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch (e) {
+      console.warn('Error reading OAuth query params:', e);
+    }
+
+    return () => {
+      window.removeEventListener('quadbid_unauthorized', handleUnauthorized);
+    };
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -485,10 +522,19 @@ export default function App() {
         <CreateListingModal
           onClose={() => setIsCreateOpen(false)}
           onCreated={fetchListings}
+          onOpenAuth={() => setIsAuthOpen(true)}
         />
       )}
 
-      {isAuthOpen && <AuthModal onClose={() => setIsAuthOpen(false)} />}
+      {isAuthOpen && (
+        <AuthModal
+          onClose={() => {
+            setIsAuthOpen(false);
+            setSetupTokenData(null);
+          }}
+          setupTokenData={setupTokenData}
+        />
+      )}
 
       {isWatchlistOpen && (
         <WatchlistModal
