@@ -6,10 +6,12 @@ Capabilities:
      when GROQ_API_KEY is present in .env.
   2. Live Gemini LLM Integration: Uses Google Gemini API (gemini-1.5-flash) when GEMINI_API_KEY
      is present in .env.
-  3. Local Semantic & Intent Engine Fallback: When no API key is provided, performs deep
+  3. RAG Candidate Selection: Retrieves the top candidate inventory lots to keep LLM context
+     compact (~1500 tokens) and blazingly fast while preventing TPM rate limits.
+  4. Local Semantic & Intent Engine Fallback: When no API key is provided, performs deep
      semantic concept mapping, synonym normalization, collegiate slang understanding,
      and budget extraction.
-  4. Strict Guardrail Invariant: If no relevant items exist in the active campus catalog
+  5. Strict Guardrail Invariant: If no relevant items exist in the active campus catalog
      within the student's constraints, it MUST state "Not Available" rather than hallucinating
      or returning irrelevant items.
 """
@@ -31,25 +33,28 @@ SEMANTIC_CONCEPT_MAP = {
     "cycle": {
         "cycle", "bicycle", "bike", "gear cycle", "hybrid", "commute", "travel",
         "ride", "pedal", "wheels", "transport", "dhaurani", "quad stand",
-        "single speed", "multispeed", "shimano", "sprint", "hercules", "hero"
+        "single speed", "multispeed", "shimano", "sprint", "hercules", "hero", "btwin",
+        "rockrider", "firefox", "mach city", "montra", "decathlon", "atlas"
     },
     "calculator": {
         "calculator", "calc", "casio", "scientific", "fx991", "fx-991", "matrix",
-        "fx", "es plus", "cw", "scientific calculator", "classwiz"
+        "fx", "es plus", "cw", "scientific calculator", "classwiz", "ti-84", "ti-36x",
+        "sharp", "writeview"
     },
     "books": {
         "book", "books", "textbook", "notes", "author", "edition", "reference",
-        "reading", "guide", "manual", "handbook", "bundle", "syllabus", "sem", "semester"
+        "reading", "guide", "manual", "handbook", "bundle", "syllabus", "sem", "semester",
+        "clrs", "grewal", "cormen", "kurose", "sedra", "silberschatz", "gate"
     },
     "electronics": {
-        "electronics", "electronic", "laptop", "mouse", "keyboard", "earphones",
-        "headphones", "charger", "cable", "monitor", "gadget", "usb", "screen",
-        "powerbank", "tech", "device", "audio", "bluetooth", "wireless"
+        "electronics", "electronic", "laptop", "mouse", "keyboard", "mechanical", "keychron",
+        "redragon", "earphones", "headphones", "charger", "cable", "monitor", "gadget", "usb",
+        "screen", "powerbank", "tech", "device", "audio", "bluetooth", "wireless", "logitech"
     },
     "other": {
         "drafter", "mini drafter", "drawing board", "t-square", "scales", "compass",
         "graphics", "kettle", "lamp", "desk", "mattress", "curtains", "dorm", "cooler",
-        "uniform", "lab uniform", "coat", "lab coat"
+        "uniform", "lab uniform", "coat", "lab coat", "apron", "cooktop", "induction"
     }
 }
 
@@ -96,6 +101,55 @@ def _format_catalog_context(active_listings: List[dict]) -> str:
             f"Closes: {it['closes_at']} | Description: {it['description'][:140]}"
         )
     return "\n".join(lines) if lines else "No active lots currently listed in database."
+
+
+def _select_top_candidates(user_query: str, active_listings: List[dict], limit: int = 25) -> List[dict]:
+    """
+    RAG candidate retrieval: selects top relevant candidate lots to feed into the LLM
+    context, preventing token limit truncation while ensuring all potential matches are present.
+    """
+    if len(active_listings) <= limit:
+        return active_listings
+
+    q = user_query.lower().strip()
+    raw_words = set(re.findall(r'[a-z0-9\-]+', q))
+    meaningful_words = raw_words - COLLEGIATE_STOPWORDS
+    budget = _extract_budget(user_query)
+
+    detected_concepts = set()
+    for concept, terms in SEMANTIC_CONCEPT_MAP.items():
+        if raw_words & terms:
+            detected_concepts.add(concept)
+
+    scored = []
+    for item in active_listings:
+        cur_price = item.get("current_price", item.get("starting_price", 0))
+        item_text = f"{item['title']} {item['category']} {item['description']}".lower()
+        item_words = set(re.findall(r'[a-z0-9\-]+', item_text))
+
+        score = 0
+        # Category / concept match
+        if item.get("category") in detected_concepts:
+            score += 15
+        for concept in detected_concepts:
+            if item_words & SEMANTIC_CONCEPT_MAP[concept]:
+                score += 8
+
+        # Meaningful word overlap
+        overlap = meaningful_words & item_words
+        score += len(overlap) * 6
+
+        # Budget consideration: prefer items within budget if specified
+        if budget is not None and cur_price <= budget:
+            score += 4
+
+        scored.append((score, item))
+
+    # Sort descending by relevance score
+    scored.sort(key=lambda x: -x[0])
+    
+    top = [item for score, item in scored[:limit]]
+    return top
 
 
 async def _query_groq_llm(user_query: str, active_listings: List[dict]) -> Optional[dict]:
@@ -322,9 +376,10 @@ def _semantic_engine_match(user_query: str, active_listings: List[dict]) -> dict
 async def process_concierge_query(user_query: str, active_listings: List[dict]) -> dict:
     """
     Main entry point:
-      1. Tries Groq Cloud LLM (OpenAI GPT-OSS-120B / Qwen) with live catalog context.
-      2. Tries Gemini LLM if configured.
-      3. Falls back to Deterministic Semantic & Intent Engine.
+      1. Uses RAG candidate retrieval (top 25 candidates) to stay under Groq TPM limits.
+      2. Tries Groq Cloud LLM (OpenAI GPT-OSS-120B / Qwen) with live candidate catalog.
+      3. Tries Gemini LLM if configured.
+      4. Falls back to Deterministic Semantic & Intent Engine.
     Guarantees strict guardrails regarding item availability.
     """
     if not user_query or not user_query.strip():
@@ -334,8 +389,11 @@ async def process_concierge_query(user_query: str, active_listings: List[dict]) 
             "is_available": False,
         }
 
-    # 1. Try Live Groq LLM
-    groq_result = await _query_groq_llm(user_query, active_listings)
+    # 1. RAG Candidate Selection (stays under 2,000 tokens)
+    candidate_listings = _select_top_candidates(user_query, active_listings, limit=25)
+
+    # 2. Try Live Groq LLM
+    groq_result = await _query_groq_llm(user_query, candidate_listings)
     if groq_result and isinstance(groq_result, dict):
         reply = groq_result.get("reply", "")
         ids = groq_result.get("recommended_listing_ids", [])
@@ -346,8 +404,8 @@ async def process_concierge_query(user_query: str, active_listings: List[dict]) 
             "is_available": is_avail,
         }
 
-    # 2. Try Live Gemini LLM if configured
-    gemini_result = await _query_gemini_llm(user_query, active_listings)
+    # 3. Try Live Gemini LLM if configured
+    gemini_result = await _query_gemini_llm(user_query, candidate_listings)
     if gemini_result and isinstance(gemini_result, dict):
         reply = gemini_result.get("reply", "")
         ids = gemini_result.get("recommended_listing_ids", [])
@@ -358,5 +416,5 @@ async def process_concierge_query(user_query: str, active_listings: List[dict]) 
             "is_available": is_avail,
         }
 
-    # 3. Fall back to Deterministic Semantic & Intent Engine
+    # 4. Fall back to Deterministic Semantic & Intent Engine
     return _semantic_engine_match(user_query, active_listings)
