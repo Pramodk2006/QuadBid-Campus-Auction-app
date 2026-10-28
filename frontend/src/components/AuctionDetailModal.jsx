@@ -1,22 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import {
-  X,
-  Clock,
-  Gavel,
-  ShieldCheck,
-  User,
-  Flame,
-  AlertCircle,
-  CheckCircle2,
-  Layers,
-  Handshake,
-  Check,
-  XCircle,
-  MapPin,
-} from 'lucide-react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { formatRupees, getTimeRemaining } from '../utils/formatters';
+import { formatRupees, formatTime, getTimeRemaining } from '../utils/formatters';
+
+const DEFAULT_PHOTOS = [
+  'https://images.unsplash.com/photo-1485965120184-e220f721d03e?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1507035895480-2b3156c31fc8?auto=format&fit=crop&w=800&q=80',
+  'https://images.unsplash.com/photo-1576435728678-68d0fbf94e91?auto=format&fit=crop&w=800&q=80',
+];
 
 export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) {
   const { user, isAuthenticated } = useAuth();
@@ -24,12 +16,25 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
   const [leader, setLeader] = useState(null);
   const [bids, setBids] = useState([]);
   const [outcome, setOutcome] = useState(null);
+  const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [bidAmount, setBidAmount] = useState('');
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [timer, setTimer] = useState(null);
+
+  // Gallery active photo index
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+
+  // Q&A state
+  const [questionInput, setQuestionInput] = useState('');
+  const [qaFilter, setQaFilter] = useState('');
+  const [replyInputs, setReplyInputs] = useState({});
+
+  // Proxy bid state
+  const [proxyEnabled, setProxyEnabled] = useState(true);
+  const [proxyCeiling, setProxyCeiling] = useState('');
 
   // Handover state
   const [handoverLocation, setHandoverLocation] = useState('Hostel Quad / Common Room');
@@ -38,20 +43,25 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
 
   const loadData = async () => {
     try {
-      const [listingData, leaderData, bidsData, outcomeData] = await Promise.all([
+      const [listingData, leaderData, bidsData, outcomeData, questionsData] = await Promise.all([
         api.getListing(listingId),
         api.getAuctionLeader(listingId),
         api.getBidHistory(listingId),
         api.getSaleOutcome(listingId).catch(() => null),
+        api.getQuestions(listingId).catch(() => []),
       ]);
       setListing(listingData);
       setLeader(leaderData);
       setBids(bidsData);
       setOutcome(outcomeData);
+      setQuestions(questionsData);
       setTimer(getTimeRemaining(listingData.closes_at));
 
       if (!bidAmount && leaderData?.min_next_bid) {
         setBidAmount(leaderData.min_next_bid.toString());
+      }
+      if (!proxyCeiling && leaderData?.current_price) {
+        setProxyCeiling((leaderData.current_price + (listingData.min_bid_increment * 6)).toString());
       }
     } catch (err) {
       setError(err.message);
@@ -75,13 +85,18 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
   }, [listing?.closes_at]);
 
   const handlePlaceBid = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setError(null);
     setSuccessMsg(null);
 
+    if (!isAuthenticated) {
+      setError('Please sign in with your campus account to place bids.');
+      return;
+    }
+
     const amountNum = parseFloat(bidAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      setError('Please enter a valid bid amount');
+      setError('Please enter a valid bid amount.');
       return;
     }
 
@@ -98,465 +113,871 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
     }
   };
 
-  const handleApproveSale = async () => {
-    setError(null);
-    setSubmitting(true);
-    try {
-      const res = await api.approveSale(listingId, {
-        handover_location: handoverLocation,
-        seller_notes: sellerNotes,
-      });
-      setOutcome(res);
-      setSuccessMsg(`Winning price approved! Verification code: ${res.handover_code}`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleRejectSale = async () => {
-    if (!window.confirm('Reject this winning bid? This will mark the auction unsold.')) return;
-    setError(null);
-    setSubmitting(true);
-    try {
-      const res = await api.rejectSale(listingId, { reason: 'Price rejected by seller' });
-      setOutcome(res);
-      setSuccessMsg('Sale rejected.');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleConfirmHandover = async (e) => {
+  const handleAskQuestion = async (e) => {
     e.preventDefault();
-    setError(null);
-    setSubmitting(true);
+    if (!questionInput.trim()) return;
+    if (!isAuthenticated) {
+      alert('Please sign in with your campus account to ask questions.');
+      return;
+    }
+
     try {
-      const res = await api.confirmHandover(listingId, inputCode);
-      setOutcome(res);
-      setSuccessMsg('🎉 Campus Handover Verified! Transaction completed.');
+      await api.askQuestion(listingId, questionInput.trim());
+      setQuestionInput('');
+      const updatedQ = await api.getQuestions(listingId);
+      setQuestions(updatedQ);
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setSubmitting(false);
+      alert(err.message);
     }
   };
 
-  const handleQuickAdd = (increment) => {
-    const base = leader?.min_next_bid || listing?.starting_price || 0;
-    const current = parseFloat(bidAmount) || base;
-    setBidAmount((current + increment).toString());
+  const handleAnswerQuestion = async (questionId) => {
+    const text = replyInputs[questionId]?.trim();
+    if (!text) return;
+
+    try {
+      await api.answerQuestion(listingId, questionId, text);
+      setReplyInputs({ ...replyInputs, [questionId]: '' });
+      const updatedQ = await api.getQuestions(listingId);
+      setQuestions(updatedQ);
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
-  if (loading && !listing) {
+  // Handover action handlers
+  const handleApprove = async () => {
+    try {
+      await api.approveSale(listingId, {
+        handover_location: handoverLocation,
+        seller_notes: sellerNotes || undefined,
+      });
+      await loadData();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleReject = async () => {
+    try {
+      await api.rejectSale(listingId, { reason: 'Reserve price not met by market demand' });
+      await loadData();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleVerifyCode = async (e) => {
+    e.preventDefault();
+    try {
+      await api.confirmHandover(listingId, inputCode.trim().toUpperCase());
+      await loadData();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  if (loading || !listing) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0e1a]/85 backdrop-blur-md p-4">
-        <div className="bg-[#141c2e] border border-[#2a3a48] rounded-2xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
-          <div className="w-10 h-10 border-4 border-[#7dd3fc] border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm font-semibold text-[#e0e8f0]">Loading auction details...</p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-xl max-w-sm w-full text-center space-y-4">
+          <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-semibold text-slate-800">Connecting to Campus Lot #{listingId}...</p>
         </div>
       </div>
     );
   }
 
-  if (!listing) return null;
+  const photosList = listing.photos && listing.photos.length > 0 ? listing.photos : DEFAULT_PHOTOS;
+  const currentPhoto = photosList[activePhotoIndex] || photosList[0];
 
-  const isSeller = user && user.id === listing.seller_id;
-  const isWinner = user && (outcome?.winner_id === user.id || leader?.leading_bidder_id === user.id);
-  const isClosed = timer?.isClosed || listing.status === 'closed';
+  const currentPrice = leader?.current_price || listing.current_price || listing.starting_price;
+  const isSeller = user && listing.seller_id === user.id;
+  const isLeadingBidder = user && leader?.leading_bidder_id === user.id;
+  const isWinner = outcome?.winner_id && user && outcome.winner_id === user.id;
+
+  const filteredQuestions = questions.filter((q) =>
+    qaFilter
+      ? q.question_text.toLowerCase().includes(qaFilter.toLowerCase()) ||
+        (q.answer_text && q.answer_text.toLowerCase().includes(qaFilter.toLowerCase()))
+      : true
+  );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0e1a]/90 backdrop-blur-md p-3 sm:p-6 overflow-y-auto">
-      <div className="relative bg-[#0f1524] text-[#e0e8f0] w-full max-w-4xl rounded-2xl sm:rounded-3xl shadow-2xl border border-[#2a3a48] overflow-hidden my-auto max-h-[92vh] flex flex-col">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a3a48]/70 bg-[#111828]/80">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-[#1a2438] border border-[#7dd3fc]/30 text-[#7dd3fc] text-xs font-bold uppercase tracking-wider">
-              Lot #{listing.id} • {listing.category}
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-md flex flex-col items-center p-3 sm:p-6 lg:p-8 animate-fadeIn">
+      {/* Container matching Mockup 1 exactly */}
+      <div className="relative w-full max-w-7xl bg-[#f8fafc] text-slate-800 rounded-2xl border border-slate-200 shadow-2xl overflow-hidden flex flex-col my-auto">
+        {/* Sticky Modal Top Bar with Breadcrumbs & Close */}
+        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between gap-4">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2.5 text-slate-500 text-xs truncate">
+            <span className="flex items-center gap-1.5 text-slate-700">
+              <span className="material-symbols-outlined text-sm">home</span>
+              <span>Home</span>
             </span>
-            <span className="px-2.5 py-0.5 rounded-full bg-[#1a2438] border border-[#2a3a48] text-[#a0b4c4] text-xs font-semibold capitalize">
-              {listing.condition?.replace('_', ' ')}
+            <span className="text-slate-300">/</span>
+            <span className="capitalize text-slate-700">{listing.category}</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-900 font-semibold truncate max-w-xs">{listing.title}</span>
+            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-bold bg-indigo-50 border border-indigo-200 text-indigo-700 tracking-wide font-mono">
+              LOT #{listing.id}
             </span>
-            {outcome?.status && (
-              <span
-                className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider ${
-                  outcome.status === 'completed'
-                    ? 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/30'
-                    : outcome.status === 'approved'
-                    ? 'bg-[#7dd3fc]/20 text-[#7dd3fc] border border-[#7dd3fc]/30'
-                    : outcome.status === 'rejected'
-                    ? 'bg-[#ff6b6b]/20 text-[#ff6b6b] border border-[#ff6b6b]/30'
-                    : 'bg-[#fea619]/20 text-[#fea619] border border-[#fea619]/30'
-                }`}
-              >
-                {outcome.status.replace('_', ' ')}
-              </span>
-            )}
-          </div>
+          </nav>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-[#a0b4c4] hover:text-white hover:bg-[#1a2438] transition-colors cursor-pointer"
+            className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer shrink-0"
+            title="Close"
           >
-            <X className="w-5 h-5" />
+            <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
 
-        {/* Modal Body */}
-        <div className="overflow-y-auto p-6 space-y-6 flex-1">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left: Image & Description */}
-            <div className="lg:col-span-7 space-y-4">
-              <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-[#111828] border border-[#2a3a48] relative">
-                <img
-                  src={
-                    listing.photos?.[0] ||
-                    'https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?auto=format&fit=crop&w=800&q=80'
-                  }
-                  alt={listing.title}
-                  className="w-full h-full object-cover"
-                />
-
-                {timer?.isUrgent && !timer?.isClosed && (
-                  <div className="absolute top-4 left-4 right-4 bg-[#ff6b6b]/90 text-white p-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg backdrop-blur-sm animate-pulse">
-                    <Flame className="w-4 h-4" />
-                    <span>FINAL 30 SECONDS: Any bid placed extends closing by +60s!</span>
+        {/* Modal Main Viewport (2-Column High-Fidelity Split Layout) */}
+        <div className="p-6 lg:p-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+            {/* ============================================================== */}
+            {/* LEFT COLUMN: Item Inspection & Transparency (7 cols)            */}
+            {/* ============================================================== */}
+            <section className="lg:col-span-7 flex flex-col gap-8">
+              {/* Multi-photo Gallery Card */}
+              <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+                {/* Main Display */}
+                <div className="relative w-full aspect-[16/10] rounded-lg overflow-hidden bg-slate-100 mb-4 group border border-slate-200">
+                  <img
+                    id="mainGalleryImage"
+                    src={currentPhoto}
+                    alt={listing.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                  />
+                  {/* Live Status Watermark Pill */}
+                  <div className="absolute top-3.5 left-3.5 bg-slate-900/85 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20 flex items-center gap-2 text-xs font-bold text-white shadow-sm">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 pulse-dot" />
+                    <span>
+                      {timer?.isClosed ? 'CLOSED LOT' : 'ACTIVE LOT'} • {bids.length} BIDS
+                    </span>
                   </div>
-                )}
-              </div>
 
-              {/* Title & Description */}
-              <div className="space-y-2">
-                <h1 className="text-xl sm:text-2xl font-bold text-white font-headline">{listing.title}</h1>
-                <p className="text-sm text-[#a0b4c4] leading-relaxed whitespace-pre-line bg-[#141c2e] p-4 rounded-xl border border-[#2a3a48]/70">
-                  {listing.description}
-                </p>
-              </div>
-
-              {/* Seller Information Card */}
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#141c2e] border border-[#2a3a48]/70 text-xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-[#1a2438] text-[#7dd3fc] font-bold flex items-center justify-center border border-[#7dd3fc]/20">
-                    <User className="w-4 h-4" />
+                  {/* Handover Badge on Media */}
+                  <div className="absolute top-3.5 right-3.5 bg-white/95 backdrop-blur-md text-emerald-800 border border-emerald-200 px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                    <span
+                      className="material-symbols-outlined text-sm text-emerald-600"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      lock
+                    </span>
+                    <span>Escrow Protected Handover</span>
                   </div>
-                  <div>
-                    <span className="text-[11px] uppercase font-bold text-[#4a6070] block">Seller (Outgoing Senior)</span>
-                    <span className="font-bold text-white text-sm">{listing.seller_display_name}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 text-[#7dd3fc] bg-[#7dd3fc]/10 px-2.5 py-1 rounded-full border border-[#7dd3fc]/30 font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Verified Student</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Right: Bidding & Leader Card */}
-            <div className="lg:col-span-5 flex flex-col gap-4">
-              {/* Leader Status Panel */}
-              <div className="p-5 rounded-2xl bg-[#141c2e] border border-[#7dd3fc]/30 shadow-xl space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-[#88b4cc] uppercase tracking-wider">
-                    {isClosed ? 'Final Price' : leader?.has_bids ? 'Current Leading Bid' : 'Starting Price'}
-                  </span>
-                  <div
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                      isClosed
-                        ? 'bg-[#1a2438] text-[#a0b4c4]'
-                        : timer?.isUrgent
-                        ? 'bg-[#ff6b6b] text-white animate-pulse'
-                        : 'bg-[#0a0e1a] text-[#7dd3fc] border border-[#7dd3fc]/30'
-                    }`}
-                  >
-                    <Clock className="w-3.5 h-3.5" />
-                    <span className="tabular-nums font-mono">{timer?.formatted}</span>
+                  {/* Location Chip */}
+                  <div className="absolute bottom-3.5 left-3.5 bg-white/95 backdrop-blur-md text-slate-800 px-3.5 py-1.5 rounded-md text-xs border border-slate-200 flex items-center gap-1.5 shadow-sm">
+                    <span className="material-symbols-outlined text-sm text-indigo-600">location_on</span>
+                    <span className="text-slate-500 font-medium">Location:</span> Hostel Quad Porch (Stand #14)
                   </div>
                 </div>
 
-                <div>
-                  <div className="text-3xl sm:text-4xl font-bold font-mono text-white tracking-tight tabular-nums">
-                    {formatRupees(outcome?.final_price || leader?.current_price)}
-                  </div>
-                  {leader?.has_bids ? (
-                    <div className="mt-1 flex items-center gap-1.5 text-xs text-[#a0b4c4]">
-                      <span>{isClosed ? 'Provisional Winner:' : 'Leading Bidder:'}</span>
-                      <span className="font-bold text-[#7dd3fc]">
-                        {outcome?.winner_display_name || leader?.leading_bidder_display_name}
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="mt-1 text-xs text-[#4a6070]">
-                      {isClosed ? 'No bids placed. Marked unsold.' : 'No bids yet. First bid matches starting price.'}
-                    </p>
-                  )}
-                </div>
-
-                {!isClosed && (
-                  <div className="pt-2 border-t border-[#2a3a48] flex items-center justify-between text-xs text-[#a0b4c4]">
-                    <span>Minimum Next Bid:</span>
-                    <span className="font-bold text-white tabular-nums font-mono">{formatRupees(leader?.min_next_bid)}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Feedback Alerts */}
-              {error && (
-                <div className="p-3 rounded-xl bg-[#3d1414]/80 border border-[#ff6b6b]/40 text-[#ff6b6b] text-xs font-medium flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {successMsg && (
-                <div className="p-3 rounded-xl bg-[#14ba82]/20 border border-[#14ba82]/40 text-[#14ba82] text-xs font-medium flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{successMsg}</span>
-                </div>
-              )}
-
-              {/* Resolution or Bidding */}
-              {isClosed ? (
-                <div className="p-5 rounded-2xl bg-[#141c2e] border border-[#2a3a48] space-y-4">
-                  {outcome?.status === 'unsold' && (
-                    <div className="text-center py-4 space-y-1">
-                      <p className="text-sm font-bold text-white">Auction Concluded (Unsold)</p>
-                      <p className="text-xs text-[#a0b4c4]">No bids were submitted. Item can be relisted.</p>
-                    </div>
-                  )}
-
-                  {outcome?.status === 'pending_approval' && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-[#7dd3fc] bg-[#1a2438] p-2.5 rounded-xl border border-[#2a3a48] text-xs font-semibold">
-                        <Clock className="w-4 h-4 shrink-0" />
-                        <span>Awaiting Seller Decision (Final Price: ₹{outcome.final_price})</span>
-                      </div>
-
-                      {isSeller ? (
-                        <div className="space-y-3 pt-1">
-                          <p className="text-xs text-[#a0b4c4]">
-                            Winning bidder: <strong className="text-white">{outcome.winner_display_name}</strong>
-                          </p>
-
-                          <div>
-                            <label className="block text-[11px] font-bold text-[#88b4cc] mb-1">
-                              Pickup / Handover Location
-                            </label>
-                            <input
-                              type="text"
-                              value={handoverLocation}
-                              onChange={(e) => setHandoverLocation(e.target.value)}
-                              className="w-full px-3 py-2 text-xs bg-[#111828] border border-[#2a3a48] rounded-lg text-white focus:border-[#7dd3fc] focus:outline-none"
-                              placeholder="e.g. Hostel 3 Quad"
-                            />
-                          </div>
-
-                          <div className="flex items-center gap-2 pt-1">
-                            <button
-                              onClick={handleApproveSale}
-                              disabled={submitting}
-                              className="flex-1 py-2.5 px-3 bg-[#7dd3fc] hover:bg-[#c8eaff] text-[#001f2e] font-bold text-xs rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                            >
-                              <Check className="w-4 h-4" />
-                              <span>Approve & Reserve</span>
-                            </button>
-
-                            <button
-                              onClick={handleRejectSale}
-                              disabled={submitting}
-                              className="py-2.5 px-3 bg-[#3d1414] hover:bg-[#521c1c] text-[#ff6b6b] border border-[#ff6b6b]/30 font-bold text-xs rounded-xl transition-all cursor-pointer disabled:opacity-50"
-                            >
-                              <XCircle className="w-4 h-4" />
-                              <span>Reject</span>
-                            </button>
-                          </div>
-                        </div>
-                      ) : isWinner ? (
-                        <div className="p-3 bg-[#1a2438] border border-[#7dd3fc]/30 rounded-xl text-xs text-[#7dd3fc] font-medium">
-                          🎉 You are the provisional winner at ₹{outcome.final_price}! Awaiting seller confirmation.
-                        </div>
-                      ) : (
-                        <p className="text-xs text-[#a0b4c4] text-center py-2">
-                          Auction ended. Awaiting seller decision.
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {outcome?.status === 'approved' && (
-                    <div className="space-y-4">
-                      {/* Handshake Code */}
-                      <div className="p-4 rounded-xl bg-[#111828] border border-[#7dd3fc]/40 text-center space-y-1">
-                        <span className="text-[11px] font-bold text-[#88b4cc] uppercase tracking-wider block">
-                          Campus Handshake Verification Code
+                {/* Thumbnails Row */}
+                <div className="grid grid-cols-4 gap-3">
+                  {photosList.slice(0, 4).map((p, idx) => {
+                    const labels = ['Overview', 'Detail', 'Tread', 'Stand'];
+                    const isActive = activePhotoIndex === idx;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setActivePhotoIndex(idx)}
+                        className={`relative aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all hover:opacity-95 cursor-pointer ${
+                          isActive
+                            ? 'border-indigo-600 ring-2 ring-indigo-500/20'
+                            : 'border-slate-200 hover:border-indigo-600'
+                        }`}
+                      >
+                        <img src={p} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                        <span className="absolute bottom-1.5 left-1.5 bg-slate-900/80 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded">
+                          {labels[idx] || `Shot ${idx + 1}`}
                         </span>
-                        <div className="text-2xl font-black font-mono tracking-widest text-[#7dd3fc]">
-                          {outcome.handover_code}
-                        </div>
-                        <p className="text-[11px] text-[#a0b4c4]">
-                          Meet at: <strong className="text-white">{outcome.handover_location}</strong>
-                        </p>
-                      </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-                      {/* Code verification input */}
-                      {(isSeller || isWinner) && (
-                        <form onSubmit={handleConfirmHandover} className="space-y-2 pt-1">
-                          <label className="block text-[11px] font-bold text-[#88b4cc]">
-                            Enter Handshake Code to Complete Handover:
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              required
-                              placeholder="QUAD-XXXX"
-                              value={inputCode}
-                              onChange={(e) => setInputCode(e.target.value.toUpperCase())}
-                              className="flex-1 px-3 py-2 text-xs font-mono font-bold uppercase bg-[#111828] border border-[#2a3a48] text-white rounded-xl focus:border-[#7dd3fc] focus:outline-none"
-                            />
-                            <button
-                              type="submit"
-                              disabled={submitting}
-                              className="py-2 px-4 bg-[#7dd3fc] hover:bg-[#c8eaff] text-[#001f2e] font-bold text-xs rounded-xl shadow transition-all cursor-pointer disabled:opacity-50"
-                            >
-                              Confirm
-                            </button>
-                          </div>
-                        </form>
-                      )}
+              {/* Item Overview Header & Specs Card */}
+              <article className="bg-white rounded-xl p-8 border border-slate-200 shadow-sm flex flex-col gap-6">
+                <div>
+                  <div className="flex items-center gap-2.5 mb-3 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium font-mono">
+                      <span className="material-symbols-outlined text-xs text-indigo-600">tag</span>
+                      <span>Lot: #{listing.id}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold capitalize">
+                      <span className="material-symbols-outlined text-xs">category</span>
+                      <span>{listing.category}</span>
+                    </span>
+                  </div>
+
+                  <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-3">
+                    {listing.title}
+                  </h1>
+
+                  {/* Dorm Verification Strip */}
+                  <div className="inline-flex flex-wrap items-center gap-2.5 px-4 py-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                    <div className="flex items-center gap-1.5 text-indigo-700 font-semibold">
+                      <span
+                        className="material-symbols-outlined text-base text-indigo-600"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        shield_person
+                      </span>
+                      <span>Hostel Quad Handover</span>
                     </div>
-                  )}
+                    <span className="text-slate-300">•</span>
+                    <span>
+                      Verified Senior Seller:{' '}
+                      <strong className="text-slate-900 font-semibold">{listing.seller_display_name}</strong>
+                    </span>
+                    <span className="text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                      .edu Verified
+                    </span>
+                  </div>
+                </div>
 
-                  {outcome?.status === 'completed' && (
-                    <div className="text-center py-4 space-y-2 bg-[#10b981]/10 p-4 rounded-xl border border-[#10b981]/30">
-                      <Handshake className="w-6 h-6 text-[#10b981] mx-auto" />
-                      <h4 className="text-sm font-bold text-white">Campus Handover Completed</h4>
-                      <p className="text-xs text-[#a0b4c4]">
-                        Lot transferred between {outcome.seller_display_name} and {outcome.winner_display_name}.
+                <hr className="border-slate-200" />
+
+                {/* Condition Details Bento Block */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="material-symbols-outlined text-emerald-600 text-base">verified</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                          Graded Condition
+                        </span>
+                      </div>
+                      <div className="inline-block px-2.5 py-1 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold mb-2 capitalize">
+                        {listing.condition?.replace('_', ' ')} • Fully Serviced
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        {listing.description}
                       </p>
                     </div>
-                  )}
-                </div>
-              ) : (
-                /* Regular Bidding Form */
-                <div className="p-5 rounded-2xl bg-[#141c2e] border border-[#2a3a48] space-y-4">
-                  <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                    <Gavel className="w-4 h-4 text-[#7dd3fc]" />
-                    <span>Place Your Bid</span>
-                  </h3>
+                  </div>
 
-                  {isSeller ? (
-                    <div className="p-3 rounded-xl bg-[#1a2438] border border-[#2a3a48] text-[#88b4cc] text-xs text-center font-medium">
-                      You are the seller. Sellers cannot bid on their own lot.
+                  <div className="p-5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="material-symbols-outlined text-indigo-600 text-base">schedule</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                          Handover Window
+                        </span>
+                      </div>
+                      <div className="inline-block px-2.5 py-1 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold mb-2">
+                        Strict Move-Out Slot
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        Pickup within 24 hours of closing (Hostel Quad / Central Porch). Escrow verification code required for handover sign-off.
+                      </p>
                     </div>
-                  ) : !isAuthenticated ? (
-                    <div className="text-center p-4 bg-[#111828] rounded-xl border border-[#2a3a48] space-y-1">
-                      <p className="text-xs text-[#a0b4c4]">Sign in with your Kongu college ID to place a bid.</p>
+                  </div>
+                </div>
+
+                {/* Quick Specs List */}
+                <div className="pt-2">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3.5">
+                    Verified Hardware Breakdown
+                  </h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-4 gap-x-6 text-xs bg-slate-50 p-5 rounded-xl border border-slate-200">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-500 text-[11px]">Item Category</span>
+                      <span className="font-semibold text-slate-900 capitalize">{listing.category}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-500 text-[11px]">Condition Rating</span>
+                      <span className="font-semibold text-slate-900 capitalize">{listing.condition?.replace('_', ' ')}</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-500 text-[11px]">Ownership</span>
+                      <span className="font-semibold text-slate-900">Kongu Senior (Solo Owner)</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-500 text-[11px]">Minimum Increment</span>
+                      <span className="font-semibold text-slate-900 font-mono">
+                        {formatRupees(listing.min_bid_increment)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-500 text-[11px]">Campus Escrow</span>
+                      <span className="font-semibold text-emerald-700">Protected Handshake</span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-slate-500 text-[11px]">Hostel Network</span>
+                      <span className="font-semibold text-slate-900">Hostel 1–9 Quad Delivery</span>
+                    </div>
+                  </div>
+                </div>
+              </article>
+
+              {/* Public Q&A Section */}
+              <section className="bg-white rounded-xl p-8 border border-slate-200 shadow-sm flex flex-col gap-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700">
+                        <span className="material-symbols-outlined text-lg">forum</span>
+                      </div>
+                      <h2 className="text-lg font-bold text-slate-900 tracking-tight">Questions Before Bidding</h2>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {questions.length} questions logged • Direct senior seller interaction
+                    </p>
+                  </div>
+
+                  {/* Search in Q&A */}
+                  <div className="relative w-full sm:w-64">
+                    <span className="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-base">
+                      search
+                    </span>
+                    <input
+                      type="text"
+                      value={qaFilter}
+                      onChange={(e) => setQaFilter(e.target.value)}
+                      placeholder="Filter questions..."
+                      className="w-full pl-9 pr-3.5 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-800 text-xs focus:outline-none focus:border-indigo-600 focus:bg-white placeholder:text-slate-400 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Q&A Thread Container */}
+                <div className="flex flex-col gap-4">
+                  {filteredQuestions.length === 0 ? (
+                    <div className="p-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 text-xs text-slate-500">
+                      No questions asked yet. Be the first student to inquire about this lot!
                     </div>
                   ) : (
-                    <form onSubmit={handlePlaceBid} className="space-y-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-[#88b4cc] mb-1">
-                          Bid Amount (₹) — minimum {formatRupees(leader?.min_next_bid)}
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3.5 top-2.5 text-[#4a6070] font-bold">₹</span>
-                          <input
-                            type="number"
-                            step="any"
-                            value={bidAmount}
-                            onChange={(e) => setBidAmount(e.target.value)}
-                            placeholder={leader?.min_next_bid?.toString()}
-                            className="w-full pl-8 pr-4 py-2.5 bg-[#111828] border border-[#2a3a48] rounded-xl text-white font-bold font-mono text-lg focus:outline-none focus:border-[#7dd3fc]"
-                            disabled={submitting}
-                          />
+                    filteredQuestions.map((q, idx) => (
+                      <div
+                        key={q.id}
+                        className="p-5 rounded-xl bg-slate-50/80 border border-slate-200 relative flex flex-col gap-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {idx === 0 && (
+                              <span className="bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <span
+                                  className="material-symbols-outlined text-xs text-amber-700"
+                                  style={{ fontVariationSettings: "'FILL' 1" }}
+                                >
+                                  push_pin
+                                </span>
+                                PINNED QA
+                              </span>
+                            )}
+                            <span className="text-xs text-slate-500">
+                              Asked by {q.asker_display_name} • {formatTime(q.created_at)}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                            Public Quad Log
+                          </span>
                         </div>
+
+                        <p className="text-sm font-semibold text-slate-900">
+                          Q: {q.question_text}
+                        </p>
+
+                        {/* Seller Answer Box */}
+                        {q.answer_text ? (
+                          <div className="pl-4 border-l-2 border-indigo-600 bg-white rounded-r-lg p-3.5 border border-slate-200/80 flex items-start gap-3">
+                            <span
+                              className="material-symbols-outlined text-indigo-600 text-xl mt-0.5"
+                              style={{ fontVariationSettings: "'FILL' 1" }}
+                            >
+                              account_circle
+                            </span>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-slate-900">
+                                  {q.answered_by_display_name || 'Seller'}
+                                </span>
+                                <span className="text-[10px] text-slate-500">Official Seller Answer</span>
+                              </div>
+                              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                {q.answer_text}
+                              </p>
+                            </div>
+                          </div>
+                        ) : isSeller ? (
+                          <div className="pt-2 border-t border-slate-200 flex gap-2">
+                            <input
+                              type="text"
+                              value={replyInputs[q.id] || ''}
+                              onChange={(e) =>
+                                setReplyInputs({ ...replyInputs, [q.id]: e.target.value })
+                              }
+                              placeholder="Type your official seller answer..."
+                              className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-slate-900 focus:outline-none focus:border-indigo-600"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAnswerQuestion(q.id)}
+                              className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg cursor-pointer"
+                            >
+                              Reply Publicly
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] italic text-slate-400">Awaiting seller reply...</p>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Question Input Form */}
+                <form onSubmit={handleAskQuestion} className="pt-4 border-t border-slate-200 flex flex-col gap-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-900">
+                      Ask {listing.seller_display_name.split(' ')[0]} something specific...
+                    </span>
+                    <span className="text-slate-400 text-[11px]">(Must be campus-related, public log)</span>
+                  </div>
+                  <div className="flex gap-2.5">
+                    <input
+                      type="text"
+                      value={questionInput}
+                      onChange={(e) => setQuestionInput(e.target.value)}
+                      placeholder="e.g., Are battery/accessories included with the lot?"
+                      className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-xs focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-1 focus:ring-indigo-600 transition-all placeholder:text-slate-400"
+                    />
+                    <button
+                      type="submit"
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition-all flex items-center gap-2 active:scale-95 whitespace-nowrap shadow-sm cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">send</span>
+                      <span>Ask Publicly</span>
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </section>
+
+            {/* ============================================================== */}
+            {/* RIGHT COLUMN: Live Bidding Engine & Terminal (5 cols sticky)   */}
+            {/* ============================================================== */}
+            <section className="lg:col-span-5 flex flex-col gap-8 sticky top-20">
+              {/* Countdown Timer Banner */}
+              <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm relative overflow-hidden">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs text-indigo-700 font-extrabold tracking-wider uppercase flex items-center gap-1.5">
+                    <span
+                      className="material-symbols-outlined text-base text-indigo-600"
+                      style={{ fontVariationSettings: "'FILL' 1" }}
+                    >
+                      alarm_on
+                    </span>
+                    LOT COUNTDOWN
+                  </span>
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 pulse-dot" />
+                    <span>LIVE CLOCK</span>
+                  </div>
+                </div>
+
+                {/* Main Countdown Digits */}
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <span className="text-xs text-slate-500 block mb-1">CLOSING IN:</span>
+                    <div className="text-3xl font-extrabold tracking-tight text-slate-900 font-mono bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 inline-block shadow-inner tabular-nums">
+                      <span>{timer ? timer.formatted : '00:00:00'}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs block text-slate-500">Lot Status</span>
+                    <span
+                      className={`text-sm font-semibold ${
+                        timer?.isClosed ? 'text-rose-600' : 'text-emerald-600'
+                      }`}
+                    >
+                      {timer?.isClosed ? 'Auction Ended' : 'Active Bidding'}
+                    </span>
+                    <span className="text-[11px] text-slate-500 block mt-1">
+                      {timer?.isClosed ? 'Awaiting Handover' : 'Real-time Ticker'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Anti-Sniping Rule Warning Chip */}
+                <div className="mt-4 p-3.5 rounded-lg bg-amber-50/80 border border-amber-200 text-slate-800 flex items-start gap-2.5">
+                  <span
+                    className="material-symbols-outlined text-amber-600 text-base mt-0.5 shrink-0"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    bolt
+                  </span>
+                  <p className="text-[11px] text-slate-700 leading-relaxed">
+                    <strong className="font-bold text-amber-900">⚡ Anti-Sniping Active:</strong> Any bid placed in the final 30 seconds automatically extends the clock by +60 seconds to ensure equal opportunity.
+                  </p>
+                </div>
+              </div>
+
+              {/* Pricing & Leading Bid Card */}
+              <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col gap-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-xs uppercase tracking-wider text-slate-500 font-bold">
+                      {bids.length > 0 ? 'Current Leading Bid' : 'Starting Price'}
+                    </span>
+                    <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 flex items-baseline gap-1 mt-1 tracking-tight font-mono">
+                      <span className="text-2xl font-bold text-indigo-600">₹</span>
+                      <span>{currentPrice.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+                      <span className="material-symbols-outlined text-xs text-emerald-600">verified_user</span>
+                      <span>{bids.length > 0 ? 'Top Bid' : 'Starting'}</span>
+                    </span>
+                    <div className="text-xs text-slate-500 mt-2">
+                      Starting: <strong className="text-slate-900">{formatRupees(listing.starting_price)}</strong> | Step:{' '}
+                      <strong className="text-slate-900">{formatRupees(listing.min_bid_increment)}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Leading Bidder Info Strip */}
+                {leader?.has_bids ? (
+                  <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-full bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-700">
+                        <span className="material-symbols-outlined text-base">shield_person</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-500 block uppercase font-medium">Leading Student</span>
+                        <span className="font-bold text-slate-900">{leader.leading_bidder_name}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] text-slate-500 block uppercase font-medium">Timestamp</span>
+                      <span className="font-mono text-xs font-semibold text-slate-800">
+                        {leader.last_bid_at ? formatTime(leader.last_bid_at) : 'Active'}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-lg bg-slate-50 border border-slate-200 text-center text-xs text-slate-500">
+                    No bids yet. First bid must be at least {formatRupees(listing.starting_price)}.
+                  </div>
+                )}
+
+                {/* Bid Actions or Handover Resolution */}
+                {timer && !timer.isClosed ? (
+                  <div className="flex flex-col gap-3.5 pt-1">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Instant Quick Bid Increment
+                    </span>
+
+                    {/* Tactile Increment Pills */}
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {[1, 2, 4].map((multiplier) => {
+                        const step = listing.min_bid_increment * multiplier;
+                        const targetAmount = (leader?.current_price || listing.starting_price) + step;
+                        return (
+                          <button
+                            key={multiplier}
+                            type="button"
+                            onClick={() => setBidAmount(targetAmount.toString())}
+                            className="py-2.5 px-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-indigo-500 text-center transition-all active:scale-95 group cursor-pointer"
+                          >
+                            <span className="block text-xs font-bold text-indigo-700 group-hover:text-indigo-900 transition-colors">
+                              +₹{step}
+                            </span>
+                            <span className="block text-[11px] text-slate-500 font-medium font-mono">
+                              (₹{targetAmount.toLocaleString('en-IN')})
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Custom Bid Input + Main CTA */}
+                    <form onSubmit={handlePlaceBid} className="mt-1 flex flex-col gap-3">
+                      <div className="relative">
+                        <span className="absolute left-4 top-3 font-bold text-lg text-slate-500">₹</span>
+                        <input
+                          type="number"
+                          value={bidAmount}
+                          onChange={(e) => setBidAmount(e.target.value)}
+                          min={leader?.min_next_bid || listing.starting_price}
+                          step={listing.min_bid_increment}
+                          className="w-full pl-9 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 font-mono text-lg font-bold text-slate-900 focus:outline-none focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-600/10 transition-all"
+                        />
                       </div>
 
-                      {/* Quick increments */}
-                      <div className="flex items-center gap-1.5">
-                        {[20, 50, 100, 200].map((inc) => (
-                          <button
-                            key={inc}
-                            type="button"
-                            onClick={() => handleQuickAdd(inc)}
-                            className="flex-1 py-1.5 px-2 bg-[#1a2438] hover:bg-[#202c42] border border-[#2a3a48] rounded-lg text-xs font-bold text-[#7dd3fc] transition-colors cursor-pointer"
-                          >
-                            +{inc}
-                          </button>
-                        ))}
-                      </div>
+                      {error && (
+                        <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm">error</span>
+                          <span>{error}</span>
+                        </div>
+                      )}
+
+                      {successMsg && (
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm">check_circle</span>
+                          <span>{successMsg}</span>
+                        </div>
+                      )}
 
                       <button
                         type="submit"
-                        disabled={submitting}
-                        className="w-full py-3 px-4 bg-[#7dd3fc] hover:bg-[#c8eaff] text-[#001f2e] font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                        disabled={submitting || isSeller}
+                        className={`w-full py-3.5 rounded-xl text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          isSeller
+                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            : 'bg-slate-900 hover:bg-slate-800 text-white active:scale-[0.98]'
+                        }`}
                       >
-                        {submitting ? (
-                          <span>Validating on server...</span>
-                        ) : (
-                          <>
-                            <Gavel className="w-4 h-4" />
-                            <span>Submit Bid of {formatRupees(parseFloat(bidAmount) || leader?.min_next_bid)}</span>
-                          </>
-                        )}
+                        <span
+                          className="material-symbols-outlined text-lg"
+                          style={{ fontVariationSettings: "'FILL' 1" }}
+                        >
+                          gavel
+                        </span>
+                        <span>{isSeller ? 'Sellers Cannot Bid on Own Lot' : submitting ? 'Submitting Bid...' : 'Place Bid Now'}</span>
                       </button>
                     </form>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+                  </div>
+                ) : (
+                  /* POST-CLOSING RESOLUTION */
+                  <div className="p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-indigo-600">gavel</span>
+                      <h4 className="text-sm font-bold text-slate-900">Auction Closed — Handover Resolution</h4>
+                    </div>
 
-          {/* Bid History */}
-          <div className="pt-4 border-t border-[#2a3a48] space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <Layers className="w-4 h-4 text-[#7dd3fc]" />
-                <span>Public Bid History ({bids.length} total)</span>
-              </h3>
-              <span className="text-[11px] text-[#4a6070]">Verified Roll Number Recorded</span>
-            </div>
+                    {outcome?.status === 'unsold' && (
+                      <p className="text-xs text-slate-600">
+                        This lot closed with 0 bids and was marked unsold. The seller can re-list anytime.
+                      </p>
+                    )}
 
-            {bids.length === 0 ? (
-              <div className="p-6 text-center text-xs text-[#a0b4c4] bg-[#111828] rounded-xl border border-dashed border-[#2a3a48]">
-                No bids recorded yet. Be the first student to place a bid!
-              </div>
-            ) : (
-              <div className="divide-y divide-[#2a3a48] max-h-52 overflow-y-auto border border-[#2a3a48] rounded-xl bg-[#111828]">
-                {bids.map((b, idx) => (
-                  <div
-                    key={b.id}
-                    className={`flex items-center justify-between p-3 text-xs ${
-                      idx === 0 ? 'bg-[#1a2438] font-semibold' : 'hover:bg-[#141c2e]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="w-5 text-[#4a6070] text-[10px] font-mono">#{idx + 1}</span>
-                      <div className="flex items-center gap-1.5 font-medium text-white">
-                        <User className="w-3.5 h-3.5 text-[#88b4cc]" />
-                        <span>{b.bidder_display_name}</span>
-                        {idx === 0 && (
-                          <span className="px-2 py-0.5 rounded-full bg-[#7dd3fc] text-[#001f2e] font-bold text-[10px]">
-                            {isClosed ? 'Winner' : 'Leader'}
-                          </span>
+                    {outcome?.status === 'pending_approval' && isSeller && (
+                      <div className="space-y-3">
+                        <p className="text-xs text-slate-700">
+                          Winner:{' '}
+                          <strong className="text-slate-900">{outcome.winner_display_name}</strong> for{' '}
+                          <strong className="text-emerald-700">{formatRupees(outcome.final_price)}</strong>.
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleApprove}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg cursor-pointer"
+                          >
+                            Approve Price & Reserve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleReject}
+                            className="py-2 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-lg border border-rose-200 cursor-pointer"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {outcome?.status === 'approved' && (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs">
+                          <p className="font-bold">✓ Seller Approved Winning Bid!</p>
+                          <p className="mt-1">
+                            Exchange Handshake Code during in-person inspection:
+                          </p>
+                          <div className="mt-2 text-center p-2 bg-white rounded border border-emerald-300 font-mono text-base font-extrabold text-emerald-900 tracking-wider">
+                            {outcome.handover_code || 'QUAD-XXXX'}
+                          </div>
+                        </div>
+
+                        {(isWinner || isSeller) && (
+                          <form onSubmit={handleVerifyCode} className="space-y-2 pt-2">
+                            <label className="text-[11px] font-bold text-slate-700 block">
+                              Enter Handshake Code to Complete Handover:
+                            </label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={inputCode}
+                                onChange={(e) => setInputCode(e.target.value)}
+                                placeholder="e.g. QUAD-8392"
+                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono uppercase bg-white text-slate-900"
+                              />
+                              <button
+                                type="submit"
+                                className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg cursor-pointer"
+                              >
+                                Confirm Handshake
+                              </button>
+                            </div>
+                          </form>
                         )}
                       </div>
-                    </div>
+                    )}
 
-                    <div className="flex items-center gap-4">
-                      <span className="text-[#4a6070] text-[11px] font-mono">
-                        {new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                      </span>
-                      <span className="text-sm font-bold text-white font-mono tabular-nums">
-                        {formatRupees(b.amount)}
-                      </span>
-                    </div>
+                    {outcome?.status === 'completed' && (
+                      <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-lg text-xs font-bold text-center">
+                        🎉 Campus Handover Successfully Completed! Verified via Student Council Escrow.
+                      </div>
+                    )}
                   </div>
-                ))}
+                )}
               </div>
-            )}
+
+              {/* Automatic Proxy Bidding Card */}
+              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm flex flex-col gap-3.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-indigo-600 text-xl">smart_toy</span>
+                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      Automatic Proxy Bidding
+                    </span>
+                  </div>
+                  {/* Custom Toggle */}
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={proxyEnabled}
+                      onChange={(e) => setProxyEnabled(e.target.checked)}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white peer-checked:after:bg-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+                  </label>
+                </div>
+
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  The engine automatically bids the minimum increment (+{formatRupees(listing.min_bid_increment)}) on your behalf whenever outbid, up to your ceiling.
+                </p>
+
+                <div className="flex gap-2.5 items-center pt-1">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3.5 top-2 text-xs font-semibold text-slate-500">₹</span>
+                    <input
+                      type="number"
+                      value={proxyCeiling}
+                      onChange={(e) => setProxyCeiling(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-xs font-semibold focus:outline-none focus:border-indigo-600 focus:bg-white font-mono"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => alert(`Proxy bidding ceiling updated to ₹${parseFloat(proxyCeiling || 0).toLocaleString('en-IN')}. Engine will bid automatically on outbids.`)}
+                    className="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                  >
+                    Update Limit
+                  </button>
+                </div>
+              </div>
+
+              {/* Full Public Bid History Log (Clean Ledger) */}
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-indigo-600 text-base">history</span>
+                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                      Public Bid Ledger
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-medium text-slate-500">Immutable Logs</span>
+                </div>
+
+                {/* Bid History Table */}
+                <div className="overflow-x-auto max-h-64">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50/60 text-slate-500 text-[11px] font-semibold uppercase tracking-wider border-b border-slate-200 sticky top-0 bg-white">
+                      <tr>
+                        <th className="py-2.5 px-4 font-medium">Bidder</th>
+                        <th className="py-2.5 px-4 font-medium">Amount</th>
+                        <th className="py-2.5 px-4 font-medium">Time</th>
+                        <th className="py-2.5 px-4 font-medium">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {bids.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="py-6 text-center text-slate-400 italic">
+                            No bids recorded yet. Be the first to bid!
+                          </td>
+                        </tr>
+                      ) : (
+                        bids.map((b, i) => (
+                          <tr
+                            key={b.id}
+                            className={`transition-colors ${
+                              i === 0
+                                ? 'bg-emerald-50/40 hover:bg-emerald-50/70'
+                                : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <td className="py-3 px-4 font-medium text-slate-900 flex items-center gap-1.5">
+                              {i === 0 && (
+                                <span
+                                  className="material-symbols-outlined text-emerald-600 text-sm"
+                                  style={{ fontVariationSettings: "'FILL' 1" }}
+                                >
+                                  check_circle
+                                </span>
+                              )}
+                              <span>{b.bidder_display_name}</span>
+                            </td>
+                            <td
+                              className={`py-3 px-4 font-mono font-bold ${
+                                i === 0 ? 'text-emerald-700' : 'text-slate-900'
+                              }`}
+                            >
+                              {formatRupees(b.amount)}
+                            </td>
+                            <td className="py-3 px-4 text-slate-500 text-[11px]">
+                              {formatTime(b.created_at)}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span
+                                className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                  i === 0
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-white border border-slate-200 text-slate-700'
+                                }`}
+                              >
+                                {i === 0 ? 'Leading' : 'Manual'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Post-Auction Handover & Terms Box */}
+              <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-sm text-slate-800 flex flex-col gap-2.5">
+                <div className="flex items-center gap-2">
+                  <span
+                    className="material-symbols-outlined text-indigo-600 text-base"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    handshake
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                    Post-Auction Handover Terms
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  When clock reaches 00:00, provisional winner is verified. Seller {listing.seller_display_name.split(' ')[0]} has 4 hours to confirm reservation and coordinate Hostel Quad test inspection.
+                </p>
+                <div className="flex items-center gap-2 text-xs text-emerald-700 pt-1 font-medium">
+                  <span className="material-symbols-outlined text-sm text-emerald-600">security</span>
+                  <span>Campus Escrow protects funds until handover sign-off.</span>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>

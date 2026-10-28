@@ -1,11 +1,39 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --font-headline: 'Plus Jakarta Sans', sans-serif;
+}
+
 @layer base {
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background-color: #0a0e1a;
-    color: #e0e8f0;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: #f8fafc;
+    color: #1e293b;
   }
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+@keyframes subtle-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+}
+
+.live-indicator, .pulse-dot {
+  animation: subtle-pulse 2s infinite ease-in-out;
 }
 
 /* Tabular digits for live bidding tickers and countdown clocks */
@@ -13,31 +41,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Glacier subtle pulse animation from code.html */
-@keyframes subtle-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.45;
-    transform: scale(0.9);
-  }
+/* Hide scrollbars for clean category and sub-nav bars */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
-
-.live-indicator {
-  animation: subtle-pulse 2.2s infinite ease-in-out;
-}
-
-/* Glassmorphism utility helpers */
-.glacier-card {
-  background: rgba(20, 28, 46, 0.7);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(125, 211, 252, 0.12);
-}
-
-.glacier-elevated {
-  background: rgba(26, 36, 56, 0.85);
-  backdrop-filter: blur(24px);
-  border: 1px solid rgba(125, 211, 252, 0.2);
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

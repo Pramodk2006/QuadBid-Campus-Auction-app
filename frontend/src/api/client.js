@@ -132,5 +132,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+
+  // Questions & Answers (Phase 6)
+  getQuestions: (listingId) => request(`/listings/${listingId}/questions`),
+
+  askQuestion: (listingId, questionText) =>
+    request(`/listings/${listingId}/questions`, {
+      method: 'POST',
+      body: JSON.stringify({ question_text: questionText }),
+    }),
+
+  answerQuestion: (listingId, questionId, answerText) =>
+    request(`/listings/${listingId}/questions/${questionId}/answer`, {
+      method: 'POST',
+      body: JSON.stringify({ answer_text: answerText }),
+    }),
 };
 

@@ -363,3 +363,59 @@ class ReportIssueRequest(BaseModel):
     reason: Optional[str] = Field(default=None, max_length=500)
 
 
+# ---------------------------------------------------------------------------
+# Question schemas (Buyer Q&A per listing)
+# ---------------------------------------------------------------------------
+
+class QuestionCreate(BaseModel):
+    """Payload for POST /api/listings/{id}/questions"""
+    question_text: str = Field(
+        min_length=5,
+        max_length=500,
+        description="Public question about item condition, specs, or handover",
+    )
+
+    @field_validator("question_text")
+    @classmethod
+    def clean_text(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 5:
+            raise ValueError("Question must be at least 5 characters long")
+        return cleaned
+
+
+class AnswerCreate(BaseModel):
+    """Payload for POST /api/listings/{id}/questions/{qid}/answer"""
+    answer_text: str = Field(
+        min_length=2,
+        max_length=1000,
+        description="Seller's public reply to the question",
+    )
+
+    @field_validator("answer_text")
+    @classmethod
+    def clean_text(cls, v: str) -> str:
+        cleaned = v.strip()
+        if len(cleaned) < 2:
+            raise ValueError("Answer must be at least 2 characters long")
+        return cleaned
+
+
+class QuestionRead(BaseModel):
+    """Public Q&A response item."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    listing_id: int
+    asker_id: int
+    asker_name: str
+    asker_display_name: str
+    asker_roll_number: Optional[str]
+    question_text: str
+    answer_text: Optional[str] = None
+    answered_by_id: Optional[int] = None
+    answered_by_display_name: Optional[str] = None
+    answered_at: Optional[datetime] = None
+    created_at: datetime
+
+

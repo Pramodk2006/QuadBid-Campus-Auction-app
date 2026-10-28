@@ -1,63 +1,156 @@
-import React from 'react';
-import { Gavel, Clock, Shield } from 'lucide-react';
-import { formatRupees } from '../utils/formatters';
+import React, { useState } from 'react';
+import { formatRupees, formatTime } from '../utils/formatters';
 
-export default function LiveBidStream({ recentBids, onSelectLot }) {
+export default function LiveBidStream({ recentBids = [], onSelectLot }) {
+  const [snipingQuery, setSnipingQuery] = useState('');
+  const [alertSaved, setAlertSaved] = useState(false);
+
+  const handleSetSnipingAlert = (e) => {
+    e.preventDefault();
+    if (!snipingQuery.trim()) return;
+    setAlertSaved(true);
+    setTimeout(() => {
+      setAlertSaved(false);
+      setSnipingQuery('');
+    }, 3000);
+  };
+
   return (
-    <aside className="space-y-6">
-      {/* 1. Live Bid Stream Widget */}
-      <div className="rounded-2xl bg-[#141c2e] border border-[#2a3a48]/60 p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-[#2a3a48]/50 pb-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#7dd3fc] live-indicator" />
-            <h3 className="text-sm font-bold text-white font-headline">Live Campus Bid Stream</h3>
+    <aside className="space-y-8">
+      {/* 1. LIVE BID STREAM TICKER */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-6 space-y-5 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-2.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 live-indicator"></span>
+            <h3 className="text-sm font-bold text-slate-900 font-headline">Live Campus Bid Stream</h3>
           </div>
-          <span className="px-2 py-0.5 rounded bg-[#1a2438] text-[#7dd3fc] text-[10px] font-mono font-semibold uppercase tracking-wider">
+          <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 text-[10px] font-mono font-bold uppercase tracking-wider border border-emerald-200">
             Real-time
           </span>
         </div>
 
-        {recentBids.length === 0 ? (
-          <p className="text-xs text-[#a0b4c4] text-center py-4">Waiting for incoming campus bids...</p>
-        ) : (
-          <div className="space-y-3">
-            {recentBids.slice(0, 6).map((b) => (
-              <div
-                key={b.id}
-                onClick={() => onSelectLot(b.listing_id)}
-                className="p-3 rounded-xl bg-[#111828] border border-[#2a3a48]/40 hover:border-[#7dd3fc]/40 transition-colors flex items-start justify-between gap-3 cursor-pointer"
-              >
-                <div className="flex items-start gap-2.5">
-                  <div className="w-7 h-7 rounded-lg bg-[#1a2438] text-[#7dd3fc] flex items-center justify-center font-bold text-xs shrink-0">
-                    {b.bidder_display_name ? b.bidder_display_name.charAt(0) : 'U'}
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-white">
-                      {formatRupees(b.amount)} on <span className="text-[#7dd3fc]">Lot #{b.listing_id}</span>
+        <div className="space-y-3.5">
+          {recentBids.length === 0 ? (
+            <div className="text-center py-6 text-slate-400 text-xs">
+              <span className="material-symbols-outlined text-2xl text-slate-300 block mb-1">
+                hourglass_empty
+              </span>
+              <span>Waiting for live bids...</span>
+            </div>
+          ) : (
+            recentBids.slice(0, 6).map((bid) => {
+              const initials = bid.bidder_name
+                ? bid.bidder_name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase()
+                : 'ST';
+
+              return (
+                <div
+                  key={bid.id}
+                  onClick={() => onSelectLot && onSelectLot(bid.listing_id)}
+                  className="p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 flex items-start justify-between gap-3 transition-colors cursor-pointer"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs shrink-0">
+                      {initials}
                     </div>
-                    <div className="text-[11px] text-[#a0b4c4] mt-0.5 font-mono truncate max-w-[170px]">
-                      {b.bidder_display_name}
+                    <div>
+                      <div className="text-xs font-bold text-slate-900">
+                        {formatRupees(bid.amount)}{' '}
+                        <span className="text-indigo-600">on Lot #{bid.listing_id}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        {bid.bidder_display_name} •{' '}
+                        <span className="text-emerald-700 font-medium">Valid Bid</span>
+                      </div>
                     </div>
                   </div>
+                  <span className="text-[10px] font-mono text-slate-400 font-medium shrink-0">
+                    {formatTime(bid.created_at)}
+                  </span>
                 </div>
-                <span className="text-[10px] font-mono text-[#4a6070] shrink-0">
-                  {new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+              );
+            })
+          )}
+        </div>
       </div>
 
-      {/* 2. Campus Handover Protocol Card */}
-      <div className="rounded-2xl bg-[#141c2e] border border-[#2a3a48]/60 p-5 space-y-3">
-        <div className="flex items-center gap-2 text-[#7dd3fc]">
-          <Shield className="w-4 h-4" />
-          <h3 className="text-xs font-bold text-white uppercase tracking-wider">Physical Handshake Escrow</h3>
+      {/* 2. SNIPING ALERT / WISHLIST WIDGET */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
+        <div className="flex items-center gap-2 text-slate-900">
+          <span className="material-symbols-outlined text-[20px] text-indigo-600">alarm</span>
+          <h3 className="text-sm font-bold text-slate-900 font-headline">Campus Sniping Alert</h3>
         </div>
-        <p className="text-xs text-[#a0b4c4] leading-relaxed">
-          Seniors and juniors meet in person inside hostel common rooms. Digital confirmation releases only upon physical handshake code verification.
+
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Can’t monitor auctions? Set an alert trigger and our system will notify you the moment an item is listed.
         </p>
+
+        <form onSubmit={handleSetSnipingAlert} className="space-y-2.5 pt-1">
+          <input
+            type="text"
+            value={snipingQuery}
+            onChange={(e) => setSnipingQuery(e.target.value)}
+            placeholder='e.g. "Dorm kettle under ₹350"'
+            className="w-full bg-slate-50 px-3.5 py-2.5 rounded-xl text-xs text-slate-900 border border-slate-200 placeholder:text-slate-400 focus:border-slate-900 focus:bg-white focus:outline-none transition-colors"
+          />
+          <button
+            type="submit"
+            className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[16px]">notification_add</span>
+            <span>{alertSaved ? '✓ Alert Trigger Saved!' : 'Set Sniping Alert'}</span>
+          </button>
+        </form>
+
+        <div className="text-[11px] text-slate-500 flex items-center gap-1 pt-1">
+          <span className="material-symbols-outlined text-[13px] text-slate-400">lock</span>
+          <span>Instant tab or browser notification</span>
+        </div>
+      </div>
+
+      {/* 3. CIRCULAR METRICS STATS */}
+      <div className="rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-sm">
+        <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2 font-headline">
+          <span className="material-symbols-outlined text-emerald-600 text-[18px]">eco</span>
+          <span>Campus Circular Impact</span>
+        </h4>
+
+        <div className="grid grid-cols-1 gap-3">
+          <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center font-bold">
+              <span className="material-symbols-outlined text-[20px]">recycling</span>
+            </div>
+            <div>
+              <span className="text-lg font-bold text-slate-900 font-mono leading-tight block">142</span>
+              <span className="text-xs text-slate-500 font-medium">Items saved from landfill</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center font-bold">
+              <span className="material-symbols-outlined text-[20px]">currency_rupee</span>
+            </div>
+            <div>
+              <span className="text-lg font-bold text-slate-900 font-mono leading-tight block">₹1.8L</span>
+              <span className="text-xs text-slate-500 font-medium">Student money retained</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="w-10 h-10 rounded-xl bg-sky-50 border border-sky-200 text-sky-700 flex items-center justify-center font-bold">
+              <span className="material-symbols-outlined text-[20px]">handshake</span>
+            </div>
+            <div>
+              <span className="text-lg font-bold text-slate-900 font-mono leading-tight block">100%</span>
+              <span className="text-xs text-slate-500 font-medium">Verified campus handovers</span>
+            </div>
+          </div>
+        </div>
       </div>
     </aside>
   );

@@ -5,9 +5,11 @@ Run via: python -m app.seed
 
 from datetime import datetime, timedelta, timezone
 from .database import Base, SessionLocal, engine
-from .models import User, Listing, Bid
+from .models import User, Listing, Bid, Question
 from .services.listing_service import rupees_to_paise
 from .services.bidding_service import place_bid
+from .services.question_service import create_question, answer_question
+from .schemas import QuestionCreate, AnswerCreate
 
 def seed_demo_data():
     Base.metadata.create_all(bind=engine)
@@ -167,8 +169,36 @@ def seed_demo_data():
         if item["category"] == "cycle":
             place_bid(db, l.id, user_objs["23ALR070"], 1400.0) # Pramod bids 1400
             place_bid(db, l.id, user_objs["22ITR012"], 1500.0) # Karthik bids 1500
+
+            # Seed realistic buyer questions & seller answers from mockups
+            q1 = create_question(
+                db, l.id, user_objs["23ALR070"],
+                QuestionCreate(question_text="Does the rear disc brake squeak or need pad replacement?")
+            )
+            answer_question(
+                db, l.id, q1["id"], user_objs["21CSE045"],
+                AnswerCreate(answer_text="No, replaced the brake pads last month. You can test ride around the hostel quad porch before final handover approval.")
+            )
+
+            q2 = create_question(
+                db, l.id, user_objs["22ITR012"],
+                QuestionCreate(question_text="Is the frame size suitable for a student 5ft 8in tall?")
+            )
+            answer_question(
+                db, l.id, q2["id"], user_objs["21CSE045"],
+                AnswerCreate(answer_text="Yes, the saddle is quick-release adjustable. I am 5'9\" and rode it comfortably across campus.")
+            )
         elif item["category"] == "calculator":
             place_bid(db, l.id, user_objs["23ALR070"], 450.0) # Pramod bids 450
+
+            q3 = create_question(
+                db, l.id, user_objs["23ALR070"],
+                QuestionCreate(question_text="Is the solar sensor and textbook display crisp?")
+            )
+            answer_question(
+                db, l.id, q3["id"], user_objs["21ECE089"],
+                AnswerCreate(answer_text="Tested in semester finals, solar sensor crisp, original protective casing intact.")
+            )
 
     print("Demo data seeded successfully with Kongu students, active lots, and live bids!")
     db.close()

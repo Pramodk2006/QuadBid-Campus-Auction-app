@@ -51,3 +51,32 @@ export function getTimeRemaining(closesAt) {
   };
 }
 
+/**
+ * Format timestamp to collegiate readable time e.g. "18:42:15"
+ */
+export function formatTime(isoString) {
+  if (!isoString) return '--:--:--';
+  const d = new Date(isoString);
+  return d.toLocaleTimeString('en-IN', {
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+/**
+ * Format ISO string to readable short date
+ */
+export function formatDate(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  return d.toLocaleDateString('en-IN', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+

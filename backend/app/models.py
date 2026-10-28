@@ -148,6 +148,9 @@ class Listing(Base):
     outcome: Mapped[Optional["SaleOutcome"]] = relationship(
         "SaleOutcome", back_populates="listing", uselist=False
     )
+    questions: Mapped[list["Question"]] = relationship(
+        "Question", back_populates="listing", cascade="all, delete-orphan", order_by="desc(Question.created_at)"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -243,5 +246,42 @@ class SaleOutcome(Base):
 
     def __repr__(self) -> str:
         return f"<SaleOutcome id={self.id} listing={self.listing_id} status={self.status} price_paise={self.final_price_paise}>"
+
+
+# ---------------------------------------------------------------------------
+# Question (Buyer Q&A per lot before bidding)
+# ---------------------------------------------------------------------------
+
+class Question(Base):
+    __tablename__ = "questions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+
+    listing_id: Mapped[int] = mapped_column(
+        ForeignKey("listings.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    asker_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True, nullable=False
+    )
+
+    question_text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    answer_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    answered_by_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    answered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    # Relationships
+    listing: Mapped["Listing"] = relationship("Listing", back_populates="questions")
+    asker: Mapped["User"] = relationship("User", foreign_keys=[asker_id])
+    answered_by: Mapped[Optional["User"]] = relationship("User", foreign_keys=[answered_by_id])
+
+    def __repr__(self) -> str:
+        return f"<Question id={self.id} listing={self.listing_id} asker={self.asker_id} answered={self.answer_text is not None}>"
 
 
