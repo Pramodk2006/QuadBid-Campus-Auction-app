@@ -35,7 +35,7 @@ def get_db() -> Generator[Session, None, None]:
 # ---------------------------------------------------------------------------
 
 @router.post("", response_model=ListingRead, status_code=201)
-def create_listing(
+async def create_listing(
     payload: ListingCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -46,6 +46,36 @@ def create_listing(
     The authenticated user automatically becomes the seller.
     """
     result = listing_service.create_listing(db, payload, seller_id=current_user.id)
+
+    # Broadcast to global WebSocket ticker so all connected clients receive real-time lot alert
+    try:
+        from ..core.websocket import manager
+        closes_at_str = (
+            result["closes_at"].isoformat()
+            if hasattr(result["closes_at"], "isoformat")
+            else str(result["closes_at"])
+        )
+        created_at_str = (
+            result["created_at"].isoformat()
+            if hasattr(result["created_at"], "isoformat")
+            else str(result["created_at"])
+        )
+        await manager.broadcast_global({
+            "type": "NEW_LISTING_POSTED",
+            "listing": {
+                "id": result["id"],
+                "title": result["title"],
+                "category": result["category"],
+                "starting_price": result["starting_price"],
+                "seller_display_name": result["seller_display_name"],
+                "photos": result.get("photos", []),
+                "closes_at": closes_at_str,
+                "created_at": created_at_str,
+            }
+        })
+    except Exception:
+        pass
+
     return result
 
 

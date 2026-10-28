@@ -40,6 +40,8 @@ export default function App() {
   const [isAiConciergeOpen, setIsAiConciergeOpen] = useState(false);
   const [isSellerHubOpen, setIsSellerHubOpen] = useState(false);
   const [watchlistCount, setWatchlistCount] = useState(0);
+  const [savedAlerts, setSavedAlerts] = useState([]);
+  const [liveAlert, setLiveAlert] = useState(null);
 
   // Handle OAuth callback tokens or unauthorized events
   useEffect(() => {
@@ -80,8 +82,10 @@ export default function App() {
   useEffect(() => {
     if (isAuthenticated) {
       api.getWatchlist().then((res) => setWatchlistCount(res.length)).catch(() => {});
+      api.getSavedSearches().then((res) => setSavedAlerts(res || [])).catch(() => {});
     } else {
       setWatchlistCount(0);
+      setSavedAlerts([]);
     }
   }, [isAuthenticated]);
 
@@ -156,6 +160,32 @@ export default function App() {
             ]);
             // Refresh listings for updated price on listing cards
             fetchListings();
+          } else if (data.type === 'NEW_LISTING_POSTED') {
+            // Live lot alert broadcast across campus
+            fetchListings();
+            const newLot = data.listing;
+            if (newLot) {
+              // Check if user has a matching keyword alert
+              const matchedAlert = (savedAlerts || []).find((al) => {
+                if (al.category && al.category !== newLot.category) return false;
+                if (al.max_price && newLot.starting_price > al.max_price) return false;
+                const txt = `${newLot.title} ${newLot.category}`.toLowerCase();
+                return txt.includes(al.query.toLowerCase());
+              });
+
+              setLiveAlert({
+                id: Date.now(),
+                listingId: newLot.id,
+                title: newLot.title,
+                category: newLot.category,
+                price: newLot.starting_price,
+                seller: newLot.seller_display_name,
+                isKeywordMatch: !!matchedAlert,
+                matchedKeyword: matchedAlert ? matchedAlert.query : null,
+              });
+
+              setTimeout(() => setLiveAlert(null), 9000);
+            }
           }
         } catch (err) {
           console.warn('WS live ticker parse error:', err);
@@ -508,6 +538,62 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Real-time In-App Lot & Keyword Alert Banner */}
+      {liveAlert && (
+        <aside
+          role="status"
+          aria-live="polite"
+          className="fixed top-20 right-4 sm:right-6 z-50 animate-bounce-subtle max-w-sm w-full bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-indigo-500/60 flex items-start gap-3 backdrop-blur-md"
+        >
+          <div
+            className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+              liveAlert.isKeywordMatch ? 'bg-amber-500 text-white' : 'bg-indigo-600 text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-lg">
+              {liveAlert.isKeywordMatch ? 'notifications_active' : 'sell'}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-1">
+              <span
+                className={`text-[10px] font-bold uppercase font-mono px-2 py-0.5 rounded ${
+                  liveAlert.isKeywordMatch
+                    ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40'
+                    : 'bg-indigo-500/20 text-indigo-300'
+                }`}
+              >
+                {liveAlert.isKeywordMatch
+                  ? `Matched Alert: "${liveAlert.matchedKeyword}"`
+                  : 'New Campus Lot Listed'}
+              </span>
+            </div>
+            <h4 className="text-xs font-bold truncate text-slate-100">{liveAlert.title}</h4>
+            <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+              Starting ₹{liveAlert.price} • {liveAlert.seller}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedListingId(liveAlert.listingId);
+                setLiveAlert(null);
+              }}
+              className="mt-2.5 inline-flex items-center gap-1 text-[11px] font-bold text-indigo-300 hover:text-white transition-colors cursor-pointer"
+            >
+              <span>Inspect Lot #{liveAlert.listingId}</span>
+              <span className="material-symbols-outlined text-[13px]">arrow_forward</span>
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setLiveAlert(null)}
+            className="text-slate-400 hover:text-white p-1 cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </aside>
+      )}
 
       {/* Modals */}
       {selectedListingId && (
