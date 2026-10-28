@@ -202,9 +202,19 @@ PRODUCT_TEMPLATES = [
 ]
 
 
-def seed_hundreds():
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
+def seed_hundreds(custom_db_url=None):
+    if custom_db_url:
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        if custom_db_url.startswith("postgres://"):
+            custom_db_url = custom_db_url.replace("postgres://", "postgresql://", 1)
+        eng = create_engine(custom_db_url, pool_pre_ping=True)
+        Base.metadata.create_all(bind=eng)
+        SessionMaker = sessionmaker(bind=eng)
+        db = SessionMaker()
+    else:
+        Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
 
     print("[*] Initializing campus users...")
     user_objects = []
@@ -306,4 +316,6 @@ def seed_hundreds():
 
 
 if __name__ == "__main__":
-    seed_hundreds()
+    import sys
+    target_url = sys.argv[1] if len(sys.argv) > 1 else None
+    seed_hundreds(target_url)

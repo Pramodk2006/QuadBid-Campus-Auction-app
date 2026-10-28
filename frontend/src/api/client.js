@@ -5,7 +5,14 @@
  * on every authenticated request.
  */
 
-const BASE_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
+const PRODUCTION_API_FALLBACK = 'https://quadbid-campus-auction-app.onrender.com/api';
+
+const BASE_URL = (
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+    ? PRODUCTION_API_FALLBACK
+    : '/api')
+).replace(/\/+$/, '');
 
 export function getAuthToken() {
   return localStorage.getItem('quadbid_token');

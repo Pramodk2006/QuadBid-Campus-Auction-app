@@ -8,6 +8,12 @@ export function getWebSocketUrl(path) {
     return `${base}${path.startsWith('/') ? path : `/${path}`}`;
   }
 
+  // Automatic production WebSocket routing on Vercel
+  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    const base = 'wss://quadbid-campus-auction-app.onrender.com';
+    return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+  }
+
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   // If running on Vite dev server (port 5173), API is on port 8000
   const host = window.location.port === '5173'
