@@ -143,10 +143,10 @@ export default function CreateListingModal({ onClose, onCreated, onOpenAuth }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="relative bg-white text-slate-800 w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-2 sm:p-4 overflow-y-auto">
+      <div className="relative bg-white text-slate-800 w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[95vh] sm:max-h-[90vh] flex flex-col animate-fadeIn">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 bg-slate-50">
           <div>
             <h2 className="text-base font-bold text-slate-900 font-headline">List Item for Campus Handover</h2>
             <p className="text-xs text-slate-500">Posting as {user?.display_name || 'Verified Student'}</p>
@@ -193,7 +193,7 @@ export default function CreateListingModal({ onClose, onCreated, onOpenAuth }) {
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
             {error && (
               <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-center gap-2">
                 <span className="material-symbols-outlined text-rose-600 text-base">error</span>

@@ -115,31 +115,31 @@ export default function AuthModal({ onClose, setupTokenData = null }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="relative bg-white text-slate-800 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-2 sm:p-4 overflow-y-auto">
+      <div className="relative bg-white text-slate-800 w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[95vh] sm:max-h-[90vh] flex flex-col animate-fadeIn">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-200 bg-slate-50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center shadow-xs">
-              <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4.5 border-b border-slate-200 bg-slate-50 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <div className="w-8 sm:w-9 h-8 sm:h-9 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center shadow-xs shrink-0">
+              <span className="material-symbols-outlined text-base sm:text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>
                 verified_user
               </span>
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 font-headline">Kongu Campus Authentication</h2>
-              <p className="text-xs text-slate-500">Requires verified @kongu.edu institutional account</p>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 font-headline">Kongu Campus Authentication</h2>
+              <p className="text-[11px] sm:text-xs text-slate-500">Requires verified @kongu.edu institutional account</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer shrink-0"
           >
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-5">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
           {error && (
             <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-medium flex items-start gap-2.5">
               <span className="material-symbols-outlined text-rose-600 text-base shrink-0 mt-0.5">error</span>

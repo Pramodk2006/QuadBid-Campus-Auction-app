@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Navbar from './components/Navbar';
+import MobileBottomNav from './components/MobileBottomNav';
 import FilterBar from './components/FilterBar';
 import ListingCard from './components/ListingCard';
 import LiveBidStream from './components/LiveBidStream';
@@ -239,9 +240,9 @@ export default function App() {
       />
 
       {/* Main Content Viewport */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 lg:px-8 py-10 flex flex-col gap-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-10 pb-28 md:pb-12 flex flex-col gap-6 sm:gap-10">
         {/* REFINED HERO (Crisp Light Mode, Deep Typography, Generous Whitespace) */}
-        <section className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm p-8 sm:p-12 lg:p-14">
+        <section className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm p-5 sm:p-10 lg:p-14">
           {/* Subtle ambient glow background effects */}
           <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-slate-100/70 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full bg-indigo-50/50 blur-3xl pointer-events-none" />
@@ -310,12 +311,12 @@ export default function App() {
           {/* AUCTION LOT FEED (Col 1-8) */}
           <section className="lg:col-span-8 space-y-8">
             {/* View Categorization Tabs */}
-            <div className="flex items-center justify-between flex-wrap gap-4 pb-2">
-              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+            <div className="flex items-center justify-between flex-wrap gap-3 pb-2">
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto no-scrollbar max-w-full">
                 <button
                   type="button"
                   onClick={() => setLotStatusFilter('all')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
                     lotStatusFilter === 'all'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
@@ -331,7 +332,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setLotStatusFilter('live')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
                     lotStatusFilter === 'live'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
@@ -347,7 +348,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setLotStatusFilter('closed')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
                     lotStatusFilter === 'closed'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
@@ -650,6 +651,18 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Mobile Sticky Bottom Navigation Bar (< md screens) */}
+      <MobileBottomNav
+        onOpenCreate={() => {
+          if (!isAuthenticated) setIsAuthOpen(true);
+          else setIsCreateOpen(true);
+        }}
+        onOpenWatchlist={() => setIsWatchlistOpen(true)}
+        onOpenAiConcierge={() => setIsAiConciergeOpen(true)}
+        onOpenSellerHub={() => setIsSellerHubOpen(true)}
+        watchlistCount={watchlistCount}
+      />
     </div>
   );
 }

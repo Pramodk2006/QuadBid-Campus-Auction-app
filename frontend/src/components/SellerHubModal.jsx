@@ -24,50 +24,50 @@ export default function SellerHubModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-2 sm:p-4 animate-fadeIn"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative bg-white text-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[88vh]">
+      <div className="relative bg-white text-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[88vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 bg-slate-50">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 shrink-0">
               <span className="material-symbols-outlined text-lg">handshake</span>
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 font-headline">Campus Handover Hub</h2>
-              <p className="text-xs text-slate-500">Track your listed sales, leading bids, and QR codes</p>
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 font-headline">Campus Handover Hub</h2>
+              <p className="text-[11px] sm:text-xs text-slate-500">Track your listed sales, leading bids, and QR codes</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer shrink-0"
           >
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
 
         {/* Tab Selector */}
-        <div className="px-6 pt-3 border-b border-slate-200 flex items-center justify-between gap-4 text-xs font-bold">
-          <div className="flex gap-4">
+        <div className="px-4 sm:px-6 pt-3 border-b border-slate-200 flex items-center justify-between gap-3 text-xs font-bold overflow-x-auto no-scrollbar">
+          <div className="flex gap-3 sm:gap-4 shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab('seller')}
-              className={`pb-2.5 border-b-2 flex items-center gap-1.5 cursor-pointer transition-colors ${
+              className={`pb-2.5 border-b-2 flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap ${
                 activeTab === 'seller'
                   ? 'border-indigo-600 text-indigo-600'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               <span className="material-symbols-outlined text-sm">storefront</span>
-              <span>My Listed Lots ({myListings.length})</span>
+              <span>My Lots ({myListings.length})</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('bids')}
-              className={`pb-2.5 border-b-2 flex items-center gap-1.5 cursor-pointer transition-colors ${
+              className={`pb-2.5 border-b-2 flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap ${
                 activeTab === 'bids'
                   ? 'border-indigo-600 text-indigo-600'
                   : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -84,7 +84,7 @@ export default function SellerHubModal({
               onClose();
               onOpenCreate();
             }}
-            className="mb-2 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+            className="mb-2 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold rounded-lg transition-colors flex items-center gap-1 cursor-pointer shrink-0"
           >
             <span className="material-symbols-outlined text-[14px]">add</span>
             <span>List Item</span>
@@ -92,7 +92,7 @@ export default function SellerHubModal({
         </div>
 
         {/* Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
           {!isAuthenticated ? (
             <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 space-y-2">
               <span className="material-symbols-outlined text-3xl text-slate-400">lock</span>

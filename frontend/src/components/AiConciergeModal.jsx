@@ -113,38 +113,38 @@ export default function AiConciergeModal({ onClose, listings = [], onSelectLot }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-2 sm:p-4 animate-fadeIn"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative bg-white text-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[88vh]">
+      <div className="relative bg-white text-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[95vh] sm:max-h-[88vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-200 bg-slate-50">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-xs shrink-0">
               <span className="material-symbols-outlined text-lg">smart_toy</span>
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-slate-900 font-headline">AI Campus Concierge</h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-indigo-100 text-indigo-700">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 font-headline">AI Campus Concierge</h2>
+                <span className="px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold font-mono bg-indigo-100 text-indigo-700">
                   Semantic LLM
                 </span>
               </div>
-              <p className="text-xs text-slate-500">Natural language inventory assistant with strict catalog guardrails</p>
+              <p className="text-[11px] sm:text-xs text-slate-500">Natural language inventory assistant with strict catalog guardrails</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer shrink-0"
           >
             <span className="material-symbols-outlined text-xl">close</span>
           </button>
         </div>
 
         {/* Suggestion Pills */}
-        <div className="px-6 py-2.5 bg-indigo-50/50 border-b border-indigo-100/60 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
+        <div className="px-4 sm:px-6 py-2 sm:py-2.5 bg-indigo-50/50 border-b border-indigo-100/60 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
           <span className="text-slate-500 font-bold shrink-0 text-[11px]">Quick Queries:</span>
           {SUGGESTIONS.map((s, idx) => (
             <button
@@ -168,14 +168,14 @@ export default function AiConciergeModal({ onClose, listings = [], onSelectLot }
         )}
 
         {/* Chat / Message Stream */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-4">
+        <div className="p-3.5 sm:p-6 overflow-y-auto flex-1 space-y-4">
           {messages.map((m, idx) => (
             <div
               key={idx}
               className={`flex flex-col ${m.sender === 'user' ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[85%] rounded-2xl p-4 text-xs leading-relaxed ${
+                className={`max-w-[92%] sm:max-w-[85%] rounded-2xl p-3.5 sm:p-4 text-xs leading-relaxed ${
                   m.sender === 'user'
                     ? 'bg-slate-900 text-white rounded-br-xs'
                     : 'bg-slate-100 text-slate-800 rounded-bl-xs border border-slate-200/80'

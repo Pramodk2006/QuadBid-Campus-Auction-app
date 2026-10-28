@@ -89,14 +89,14 @@ export default function ListingCard({ listing, onSelect, featured = false }) {
           </div>
 
           {/* Card Content */}
-          <div className="md:col-span-7 p-6 sm:p-7 flex flex-col justify-between space-y-5">
+          <div className="md:col-span-7 p-4 sm:p-6 lg:p-7 flex flex-col justify-between space-y-4 sm:space-y-5">
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                     {listing.category} • Lot #{listing.id}
                   </span>
-                  <h2 className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors mt-0.5">
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors mt-0.5">
                     {listing.title}
                   </h2>
                 </div>
@@ -129,7 +129,7 @@ export default function ListingCard({ listing, onSelect, featured = false }) {
             </div>
 
             {/* Price & CTA */}
-            <div className="pt-4 border-t border-slate-200 flex items-end justify-between gap-4">
+            <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-end justify-between gap-3 sm:gap-4">
               <div>
                 <span className="text-xs text-slate-500 font-medium block">
                   {timer.isClosed
@@ -144,11 +144,11 @@ export default function ListingCard({ listing, onSelect, featured = false }) {
                   {formatRupees(currentPrice)}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 {timer.isClosed ? (
                   <button
                     type="button"
-                    className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-all"
+                    className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[16px] text-indigo-600">handshake</span>
                     <span>View Handover Outcome</span>
@@ -156,7 +156,7 @@ export default function ListingCard({ listing, onSelect, featured = false }) {
                 ) : (
                   <button
                     type="button"
-                    className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm flex items-center gap-1.5 transition-all"
+                    className="flex-1 sm:flex-initial px-4 sm:px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[16px]">gavel</span>
                     <span>Quick Bid {formatRupees(nextMinBid)}</span>
@@ -164,7 +164,7 @@ export default function ListingCard({ listing, onSelect, featured = false }) {
                 )}
                 <button
                   type="button"
-                  className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-slate-900 transition-colors"
+                  className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-slate-900 transition-colors shrink-0 cursor-pointer"
                   title="View Auction Room"
                 >
                   <span className="material-symbols-outlined text-[18px]">tune</span>
@@ -221,7 +221,7 @@ export default function ListingCard({ listing, onSelect, featured = false }) {
       </div>
 
       {/* Card Content */}
-      <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
+      <div className="p-4 sm:p-6 flex-1 flex flex-col justify-between space-y-3.5 sm:space-y-4">
         <div>
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-500 font-bold uppercase tracking-wider text-[11px]">

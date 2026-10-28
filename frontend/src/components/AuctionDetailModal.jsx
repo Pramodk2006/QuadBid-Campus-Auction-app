@@ -373,24 +373,24 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
       {/* Modal Dialog Card */}
       <div className="relative w-full max-w-7xl mx-auto bg-[#f8fafc] text-slate-800 rounded-2xl border border-slate-200 shadow-2xl my-2 sm:my-6">
         {/* Sticky Modal Top Bar with Breadcrumbs & Close */}
-        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between gap-4 rounded-t-2xl">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2.5 text-slate-500 text-xs truncate">
-            <span className="flex items-center gap-1.5 text-slate-700">
+        <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-3 sm:gap-4 rounded-t-2xl">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 sm:gap-2.5 text-slate-500 text-xs truncate">
+            <span className="flex items-center gap-1 text-slate-700">
               <span className="material-symbols-outlined text-sm">home</span>
-              <span>Home</span>
+              <span className="hidden sm:inline">Home</span>
             </span>
             <span className="text-slate-300">/</span>
             <span className="capitalize text-slate-700">{listing.category}</span>
             <span className="text-slate-300">/</span>
-            <span className="text-slate-900 font-semibold truncate max-w-xs">{listing.title}</span>
-            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-bold bg-indigo-50 border border-indigo-200 text-indigo-700 tracking-wide font-mono">
+            <span className="text-slate-900 font-semibold truncate max-w-[120px] sm:max-w-xs">{listing.title}</span>
+            <span className="hidden xs:inline-flex ml-1.5 sm:ml-2 items-center px-2 py-0.5 rounded text-[10px] sm:text-[11px] font-bold bg-indigo-50 border border-indigo-200 text-indigo-700 tracking-wide font-mono">
               LOT #{listing.id}
             </span>
           </nav>
 
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer shrink-0"
+            className="p-1.5 sm:p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer shrink-0"
             title="Close"
           >
             <span className="material-symbols-outlined text-xl">close</span>
@@ -398,7 +398,7 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
         </div>
 
         {/* Modal Main Viewport (2-Column High-Fidelity Split Layout) */}
-        <div className="p-6 lg:p-10">
+        <div className="p-3.5 sm:p-6 lg:p-10 pb-24 lg:pb-10">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
             {/* ============================================================== */}
             {/* LEFT COLUMN: Item Inspection & Transparency (7 cols)            */}
@@ -467,7 +467,7 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
               </div>
 
               {/* Item Overview Header & Specs Card */}
-              <article className="bg-white rounded-xl p-8 border border-slate-200 shadow-sm flex flex-col gap-6">
+              <article className="bg-white rounded-xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm flex flex-col gap-6">
                 <div>
                   <div className="flex items-center gap-2.5 mb-3 flex-wrap">
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium font-mono">
@@ -730,7 +730,7 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
             {/* ============================================================== */}
             <section className="lg:col-span-5 flex flex-col gap-8">
               {/* Countdown Timer Banner */}
-              <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm relative overflow-hidden">
+              <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm relative overflow-hidden">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs text-indigo-700 font-extrabold tracking-wider uppercase flex items-center gap-1.5">
                     <span
@@ -751,7 +751,7 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
                 <div className="flex items-center justify-between py-2">
                   <div>
                     <span className="text-xs text-slate-500 block mb-1">CLOSING IN:</span>
-                    <div className="text-3xl font-extrabold tracking-tight text-slate-900 font-mono bg-slate-50 px-4 py-2 rounded-lg border border-slate-200 inline-block shadow-inner tabular-nums">
+                    <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 font-mono bg-slate-50 px-3.5 sm:px-4 py-2 rounded-lg border border-slate-200 inline-block shadow-inner tabular-nums">
                       <span>{timer ? timer.formatted : '00:00:00'}</span>
                     </div>
                   </div>
@@ -785,7 +785,7 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
               </div>
 
               {/* Pricing & Leading Bid Card */}
-              <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex flex-col gap-6">
+              <div id="biddingEngineCard" className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm flex flex-col gap-5 sm:gap-6 scroll-mt-20">
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-xs uppercase tracking-wider text-slate-500 font-bold">
@@ -1143,6 +1143,74 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
                 </div>
               </div>
             </section>
+          </div>
+        </div>
+
+        {/* Mobile Sticky Bottom Bid & Timer Bar (< lg screens) */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-4 py-2.5 flex items-center justify-between gap-3 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))]">
+          <div>
+            <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+              <span className={`w-1.5 h-1.5 rounded-full ${timer?.isClosed ? 'bg-slate-400' : 'bg-emerald-500 live-indicator'}`} />
+              <span>{timer?.isClosed ? 'Auction Ended' : timer?.formatted}</span>
+            </div>
+            <div className="text-base sm:text-lg font-extrabold text-slate-900 font-mono">
+              ₹{currentPrice.toLocaleString('en-IN')}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {!timer?.isClosed ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById('biddingEngineCard');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="px-3 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 cursor-pointer"
+                >
+                  Custom
+                </button>
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={async () => {
+                    if (!isAuthenticated) {
+                      setError('Please sign in with your campus account to place bids.');
+                      return;
+                    }
+                    const nextVal = (leader?.current_price || listing.starting_price) + listing.min_bid_increment;
+                    setSubmitting(true);
+                    try {
+                      const result = await api.placeBid(listingId, nextVal);
+                      setSuccessMsg(result.message);
+                      await loadData();
+                      if (onBidPlaced) onBidPlaced();
+                    } catch (err) {
+                      setError(err.message);
+                    } finally {
+                      setSubmitting(false);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[15px]">gavel</span>
+                  <span>Quick Bid +₹{listing.min_bid_increment}</span>
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById('biddingEngineCard');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-4 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[15px]">handshake</span>
+                <span>Handover Status</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
