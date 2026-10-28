@@ -11,12 +11,17 @@ For prod: set env vars directly (no .env file on server).
 """
 
 import secrets
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_ENV_FILE = _BACKEND_DIR / ".env"
+_ROOT_ENV_FILE = _BACKEND_DIR.parent / ".env"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(_ENV_FILE, _ROOT_ENV_FILE, ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

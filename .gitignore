@@ -22,6 +22,8 @@ env/
 .env
 .env.*
 *.secret
+client_secret_*.json
+*.pem
 
 # IDE
 .vscode/
