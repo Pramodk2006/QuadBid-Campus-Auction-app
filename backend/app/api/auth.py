@@ -170,14 +170,21 @@ async def google_callback(
         err_msg = urllib.parse.quote(f"Only @{settings.COLLEGE_EMAIL_DOMAIN} email addresses are allowed")
         return RedirectResponse(url=f"{settings.FRONTEND_URL}/?auth_error={err_msg}")
 
-    # 4. Check if user already exists
+    # 4. Check if user already exists (by google_id or existing institutional email)
     existing_user = user_service.get_user_by_google_id(db, google_id)
+    if not existing_user:
+        existing_user = user_service.get_user_by_email(db, email)
+        if existing_user:
+            # Associate real Google OAuth subject ID with existing student record
+            existing_user.google_id = google_id
 
     if existing_user:
-        # Returning user — update avatar if changed
+        # Returning user — update avatar / name if present
         if avatar_url and existing_user.avatar_url != avatar_url:
             existing_user.avatar_url = avatar_url
-            db.commit()
+        if name and not existing_user.name:
+            existing_user.name = name
+        db.commit()
 
         if existing_user.is_profile_complete:
             # Fully registered — issue access token and redirect to frontend
@@ -273,7 +280,7 @@ def dev_login(payload: DevLoginRequest, db: Session = Depends(get_db)):
     (i.e. not the default placeholder). In production, remove this route entirely.
     """
     # Safety gate: disable in production
-    if settings.GOOGLE_CLIENT_ID != "YOUR_GOOGLE_CLIENT_ID":
+    if settings.ENVIRONMENT == "production":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Dev login is disabled in production",
