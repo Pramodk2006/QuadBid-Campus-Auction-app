@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus, AlertCircle, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
@@ -8,9 +8,7 @@ export default function CreateListingModal({ onClose, onCreated }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // Default closing time: 24 hours from now in local timezone ISO string
   const defaultClose = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  // Format for datetime-local input: YYYY-MM-DDTHH:mm
   const localIso = new Date(defaultClose.getTime() - defaultClose.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 16);
@@ -30,7 +28,6 @@ export default function CreateListingModal({ onClose, onCreated }) {
     e.preventDefault();
     setError(null);
 
-    // Validate inputs
     if (!formData.title.trim()) {
       setError('Please provide an item title');
       return;
@@ -82,17 +79,17 @@ export default function CreateListingModal({ onClose, onCreated }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="relative bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0e1a]/85 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="relative bg-[#0f1524] text-[#e0e8f0] w-full max-w-xl rounded-2xl shadow-2xl border border-[#2a3a48] overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a3a48] bg-[#111828]">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 font-headline">List Item for Auction</h2>
-            <p className="text-xs text-slate-500">Posting as {user?.display_name}</p>
+            <h2 className="text-base font-bold text-white font-headline">List Item for Campus Auction</h2>
+            <p className="text-xs text-[#88b4cc]">Posting as {user?.display_name}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
+            className="p-1.5 rounded-lg text-[#a0b4c4] hover:text-white hover:bg-[#1a2438] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -101,68 +98,65 @@ export default function CreateListingModal({ onClose, onCreated }) {
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-[#3d1414]/80 border border-[#ff6b6b]/40 text-[#ff6b6b] text-xs font-medium flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-[#88b4cc] uppercase tracking-wider mb-1">
               Title *
             </label>
             <input
               type="text"
               required
-              placeholder="e.g. Hero Sprint Pro Cycle (Good condition)"
+              placeholder="e.g. Hero Sprint Pro 21-Speed Gear Cycle"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#111828] border border-[#2a3a48] text-sm text-white focus:border-[#7dd3fc] focus:outline-none"
             />
           </div>
 
-          {/* Category & Condition */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-[#88b4cc] uppercase tracking-wider mb-1">
                 Category
               </label>
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2.5 rounded-xl bg-[#111828] border border-[#2a3a48] text-sm text-white focus:border-[#7dd3fc] focus:outline-none"
               >
                 <option value="cycle">Cycle & Mobility</option>
                 <option value="calculator">Scientific Calculator</option>
-                <option value="books">Books & Textbooks</option>
-                <option value="electronics">Electronics & Tech</option>
-                <option value="other">Other Campus Gear</option>
+                <option value="books">Textbooks & Notes</option>
+                <option value="electronics">Dorm Tech</option>
+                <option value="other">Lab Equipment & Other</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-[#88b4cc] uppercase tracking-wider mb-1">
                 Condition
               </label>
               <select
                 value={formData.condition}
                 onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2.5 rounded-xl bg-[#111828] border border-[#2a3a48] text-sm text-white focus:border-[#7dd3fc] focus:outline-none"
               >
                 <option value="new">Brand New</option>
                 <option value="like_new">Like New</option>
                 <option value="good">Good Condition</option>
-                <option value="fair">Fair (Normal Wear)</option>
+                <option value="fair">Fair Wear</option>
                 <option value="needs_repair">Needs Repair</option>
               </select>
             </div>
           </div>
 
-          {/* Starting Price & Increment */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-[#88b4cc] uppercase tracking-wider mb-1">
                 Starting Price (₹) *
               </label>
               <input
@@ -172,12 +166,12 @@ export default function CreateListingModal({ onClose, onCreated }) {
                 required
                 value={formData.starting_price}
                 onChange={(e) => setFormData({ ...formData, starting_price: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#111828] border border-[#2a3a48] text-sm text-white font-mono focus:border-[#7dd3fc] focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-bold text-[#88b4cc] uppercase tracking-wider mb-1">
                 Min Increment (₹) *
               </label>
               <input
@@ -187,28 +181,26 @@ export default function CreateListingModal({ onClose, onCreated }) {
                 required
                 value={formData.min_bid_increment}
                 onChange={(e) => setFormData({ ...formData, min_bid_increment: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#111828] border border-[#2a3a48] text-sm text-white font-mono focus:border-[#7dd3fc] focus:outline-none"
               />
             </div>
           </div>
 
-          {/* Closes At */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Auction Closing Date & Time *
+            <label className="block text-xs font-bold text-[#88b4cc] uppercase tracking-wider mb-1">
+              Closing Date & Time *
             </label>
             <input
               type="datetime-local"
               required
               value={formData.closes_at}
               onChange={(e) => setFormData({ ...formData, closes_at: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#111828] border border-[#2a3a48] text-sm text-white focus:border-[#7dd3fc] focus:outline-none"
             />
           </div>
 
-          {/* Photo URL */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-[#88b4cc] uppercase tracking-wider mb-1">
               Photo URL (Optional)
             </label>
             <input
@@ -216,13 +208,12 @@ export default function CreateListingModal({ onClose, onCreated }) {
               placeholder="https://... (image URL)"
               value={formData.photoUrl}
               onChange={(e) => setFormData({ ...formData, photoUrl: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#111828] border border-[#2a3a48] text-sm text-white focus:border-[#7dd3fc] focus:outline-none"
             />
           </div>
 
-          {/* Description */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+            <label className="block text-xs font-bold text-[#88b4cc] uppercase tracking-wider mb-1">
               Description *
             </label>
             <textarea
@@ -231,23 +222,22 @@ export default function CreateListingModal({ onClose, onCreated }) {
               placeholder="Describe condition, reason for selling, hostel handover location..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#111828] border border-[#2a3a48] text-sm text-white focus:border-[#7dd3fc] focus:outline-none"
             />
           </div>
 
-          {/* Footer Submit */}
           <div className="pt-2 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-colors"
+              className="px-4 py-2.5 rounded-xl border border-[#2a3a48] text-[#a0b4c4] text-xs font-semibold hover:bg-[#1a2438] transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-[#7dd3fc] hover:bg-[#c8eaff] text-[#001f2e] text-xs font-bold shadow-md transition-all cursor-pointer disabled:opacity-50"
             >
               {submitting ? 'Creating Listing...' : 'Publish Auction'}
             </button>
@@ -257,4 +247,3 @@ export default function CreateListingModal({ onClose, onCreated }) {
     </div>
   );
 }
-

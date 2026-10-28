@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, User, AlertCircle, ArrowRight } from 'lucide-react';
+import { X, ShieldCheck, User, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const DEMO_STUDENTS = [
@@ -53,27 +53,23 @@ export default function AuthModal({ onClose }) {
     }
   };
 
-  const selectQuickStudent = (student) => {
-    setFormData(student);
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0e1a]/85 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="relative bg-[#0f1524] text-[#e0e8f0] w-full max-w-md rounded-2xl shadow-2xl border border-[#2a3a48] overflow-hidden my-auto">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a3a48] bg-[#111828]">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-[#7dd3fc]/10 text-[#7dd3fc] flex items-center justify-center font-bold border border-[#7dd3fc]/20">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 font-headline">Student Verification</h2>
-              <p className="text-[11px] text-slate-500">Sign in with Kongu College ID</p>
+              <h2 className="text-base font-bold text-white font-headline">Student Verification</h2>
+              <p className="text-[11px] text-[#88b4cc]">Sign in with Kongu College ID</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-[#a0b4c4] hover:text-white hover:bg-[#1a2438] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -82,101 +78,101 @@ export default function AuthModal({ onClose }) {
         {/* Content */}
         <div className="p-6 space-y-5">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+            <div className="p-3 rounded-xl bg-[#3d1414]/80 border border-[#ff6b6b]/40 text-[#ff6b6b] text-xs font-medium flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          {/* Quick Select Buttons */}
+          {/* Quick Profile Selection */}
           <div>
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Quick Select Campus Profile
+            <label className="block text-[11px] font-bold text-[#88b4cc] uppercase tracking-wider mb-2">
+              Select Campus Profile
             </label>
             <div className="grid grid-cols-1 gap-2">
               {DEMO_STUDENTS.map((st) => (
                 <button
                   key={st.roll_number}
                   type="button"
-                  onClick={() => selectQuickStudent(st)}
+                  onClick={() => setFormData(st)}
                   className={`p-2.5 rounded-xl border text-left text-xs transition-all flex items-center justify-between cursor-pointer ${
                     formData.roll_number === st.roll_number
-                      ? 'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-500/20 text-indigo-950'
-                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                      ? 'bg-[#1a2438] border-[#7dd3fc] text-white ring-1 ring-[#7dd3fc]/50'
+                      : 'bg-[#111828] hover:bg-[#141c2e] border-[#2a3a48] text-[#a0b4c4]'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">
+                    <div className="w-7 h-7 rounded-full bg-[#1a2438] text-[#7dd3fc] font-bold flex items-center justify-center text-xs border border-[#7dd3fc]/20">
                       {st.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="font-bold">{st.name}</div>
-                      <div className="text-[11px] text-slate-500 font-mono">
+                      <div className="font-bold text-white">{st.name}</div>
+                      <div className="text-[11px] text-[#88b4cc] font-mono">
                         {st.roll_number} • {st.department} (Year {st.year})
                       </div>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-indigo-600">Use</span>
+                  <span className="text-[10px] font-bold text-[#7dd3fc]">Use</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Form Details */}
-          <form onSubmit={handleDevSubmit} className="space-y-3 pt-2 border-t border-slate-100">
+          {/* Form */}
+          <form onSubmit={handleDevSubmit} className="space-y-3 pt-2 border-t border-[#2a3a48]">
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Student Name</label>
+              <label className="block text-xs font-bold text-[#88b4cc] mb-1">Student Name</label>
               <input
                 type="text"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 rounded-xl bg-[#111828] border border-[#2a3a48] text-xs text-white focus:border-[#7dd3fc] focus:outline-none"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Roll Number</label>
+                <label className="block text-xs font-bold text-[#88b4cc] mb-1">Roll Number</label>
                 <input
                   type="text"
                   required
                   placeholder="23ALR070"
                   value={formData.roll_number}
                   onChange={(e) => setFormData({ ...formData, roll_number: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs uppercase font-mono font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 rounded-xl bg-[#111828] border border-[#2a3a48] text-xs text-white uppercase font-mono font-bold focus:border-[#7dd3fc] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Department</label>
+                <label className="block text-xs font-bold text-[#88b4cc] mb-1">Department</label>
                 <input
                   type="text"
                   required
                   placeholder="AIM"
                   value={formData.department}
                   onChange={(e) => setFormData({ ...formData, department: e.target.value.toUpperCase() })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs uppercase font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 rounded-xl bg-[#111828] border border-[#2a3a48] text-xs text-white uppercase font-bold focus:border-[#7dd3fc] focus:outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">College Email (@kongu.edu)</label>
+              <label className="block text-xs font-bold text-[#88b4cc] mb-1">College Email (@kongu.edu)</label>
               <input
                 type="email"
                 required
                 placeholder="student.23aim@kongu.edu"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 rounded-xl bg-[#111828] border border-[#2a3a48] text-xs text-white focus:border-[#7dd3fc] focus:outline-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={submitting}
-              className="w-full mt-3 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full mt-3 py-3 px-4 bg-[#7dd3fc] hover:bg-[#c8eaff] text-[#001f2e] font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <User className="w-4 h-4" />
               <span>{submitting ? 'Authenticating...' : `Sign In as ${formData.name} (${formData.roll_number})`}</span>
@@ -187,4 +183,3 @@ export default function AuthModal({ onClose }) {
     </div>
   );
 }
-

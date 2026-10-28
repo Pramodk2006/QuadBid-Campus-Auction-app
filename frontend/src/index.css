@@ -2,27 +2,42 @@
 
 @layer base {
   body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    background-color: #0a0e1a;
+    color: #e0e8f0;
   }
 }
 
-/* Tabular digits for live bidding tickers and countdown clocks as specified in DESIGN.md */
+/* Tabular digits for live bidding tickers and countdown clocks */
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Pulse animation for live indicators */
-@keyframes pulse-dot {
+/* Glacier subtle pulse animation from code.html */
+@keyframes subtle-pulse {
   0%, 100% {
     opacity: 1;
     transform: scale(1);
   }
   50% {
-    opacity: 0.4;
-    transform: scale(0.85);
+    opacity: 0.45;
+    transform: scale(0.9);
   }
 }
 
-.animate-pulse-dot {
-  animation: pulse-dot 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.live-indicator {
+  animation: subtle-pulse 2.2s infinite ease-in-out;
+}
+
+/* Glassmorphism utility helpers */
+.glacier-card {
+  background: rgba(20, 28, 46, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+}
+
+.glacier-elevated {
+  background: rgba(26, 36, 56, 0.85);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(125, 211, 252, 0.2);
 }
