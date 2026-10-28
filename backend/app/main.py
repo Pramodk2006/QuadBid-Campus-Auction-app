@@ -25,6 +25,7 @@ from .api import sales as sales_router
 from .api import questions as questions_router
 from .api import ws as ws_router
 from .api import upload as upload_router
+from .api import watchlist as watchlist_router
 
 # Create all tables on startup (no-op if they already exist)
 Base.metadata.create_all(bind=engine)
@@ -65,6 +66,7 @@ app.include_router(sales_router.router)
 app.include_router(questions_router.router)
 app.include_router(ws_router.router)
 app.include_router(upload_router.router)
+app.include_router(watchlist_router.router)
 
 # ---------------------------------------------------------------------------
 # Static Files — Serve uploaded inspection photos

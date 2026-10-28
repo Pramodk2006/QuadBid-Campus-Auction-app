@@ -423,3 +423,47 @@ class QuestionRead(BaseModel):
     created_at: datetime
 
 
+# ---------------------------------------------------------------------------
+# Watchlist & Saved Search schemas (Phase 7)
+# ---------------------------------------------------------------------------
+
+class WatchlistRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    listing_id: int
+    listing: ListingListItem
+    created_at: datetime
+
+
+class SavedSearchCreate(BaseModel):
+    query: str = Field(min_length=2, max_length=120)
+    category: Optional[str] = None
+    max_price: Optional[float] = Field(default=None, ge=1.0)
+
+
+class SavedSearchRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    query: str
+    category: Optional[str] = None
+    max_price: Optional[float] = None
+    created_at: datetime
+
+
+# ---------------------------------------------------------------------------
+# AutoBid schemas (Phase 8 — Proxy Auto-Bidding)
+# ---------------------------------------------------------------------------
+
+class AutoBidSet(BaseModel):
+    max_ceiling: float = Field(ge=1.0, description="Maximum ceiling in ₹")
+
+
+class AutoBidRead(BaseModel):
+    listing_id: int
+    max_ceiling: float
+    is_active: bool
+
+
+

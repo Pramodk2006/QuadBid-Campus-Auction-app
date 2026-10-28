@@ -24,7 +24,7 @@ from typing import Optional
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import Bid, Listing, User
+from ..models import Bid, Listing, User, AutoBidLimit
 from .listing_service import paise_to_rupees, rupees_to_paise
 
 
@@ -153,6 +153,9 @@ def place_bid(
     db.refresh(bid)
     db.refresh(listing)
 
+    # 8. Evaluate automatic proxy bids from other students
+    _evaluate_proxy_bids(db, listing_id, current_bidder_id=bidder.id)
+
     message = "Bid placed successfully"
     if was_extended:
         message = (
@@ -254,4 +257,150 @@ def get_auction_leader(db: Session, listing_id: int) -> dict:
         "closes_at": listing.closes_at,
         "is_closed": is_closed,
     }
+
+
+# ---------------------------------------------------------------------------
+# Proxy Auto-Bidding (Phase 8)
+# ---------------------------------------------------------------------------
+
+def _evaluate_proxy_bids(db: Session, listing_id: int, current_bidder_id: Optional[int] = None) -> list[dict]:
+    """
+    Evaluates active auto-proxy bid ceilings and automatically places advancing bids
+    until market equilibrium is reached.
+    """
+    listing = db.get(Listing, listing_id)
+    if not listing or listing.status != "active":
+        return []
+
+    placed_bids = []
+    # Up to 25 iterations to safely resolve competing proxy limits
+    for _ in range(25):
+        top_bid_stmt = (
+            select(Bid)
+            .where(Bid.listing_id == listing_id)
+            .order_by(Bid.amount_paise.desc(), Bid.created_at.asc())
+            .limit(1)
+        )
+        top_bid = db.execute(top_bid_stmt).scalar_one_or_none()
+
+        if top_bid is None:
+            min_needed = listing.starting_price_paise
+            current_leader_id = None
+        else:
+            min_needed = top_bid.amount_paise + listing.min_bid_increment_paise
+            current_leader_id = top_bid.bidder_id
+
+        # Find eligible proxy bidders who aren't currently leading
+        proxy_stmt = (
+            select(AutoBidLimit)
+            .where(
+                AutoBidLimit.listing_id == listing_id,
+                AutoBidLimit.is_active == True,
+                AutoBidLimit.user_id != current_leader_id,
+                AutoBidLimit.max_ceiling_paise >= min_needed,
+            )
+            .order_by(AutoBidLimit.max_ceiling_paise.desc(), AutoBidLimit.created_at.asc())
+        )
+        eligible_proxy = db.execute(proxy_stmt).scalar_one_or_none()
+
+        if eligible_proxy is None:
+            break
+
+        bidder = db.get(User, eligible_proxy.user_id)
+        if not bidder or bidder.id == listing.seller_id:
+            eligible_proxy.is_active = False
+            db.commit()
+            continue
+
+        now = datetime.now(timezone.utc)
+        auto_bid = Bid(
+            listing_id=listing_id,
+            bidder_id=bidder.id,
+            amount_paise=min_needed,
+            created_at=now,
+        )
+        db.add(auto_bid)
+        db.commit()
+        db.refresh(auto_bid)
+        placed_bids.append({
+            "id": auto_bid.id,
+            "listing_id": auto_bid.listing_id,
+            "bidder_id": auto_bid.bidder_id,
+            "bidder_display_name": bidder.display_name,
+            "amount": paise_to_rupees(auto_bid.amount_paise),
+            "created_at": auto_bid.created_at,
+        })
+
+    return placed_bids
+
+
+def set_proxy_limit(db: Session, listing_id: int, user: User, max_ceiling_rupees: float) -> dict:
+    listing = db.get(Listing, listing_id)
+    if not listing:
+        raise ValueError("Listing not found")
+    if listing.seller_id == user.id:
+        raise PermissionError("Sellers are not permitted to bid on their own listings")
+    if listing.status != "active":
+        raise ValueError("Cannot set proxy bid on non-active listing")
+
+    ceiling_paise = rupees_to_paise(max_ceiling_rupees)
+
+    top_stmt = select(Bid).where(Bid.listing_id == listing_id).order_by(Bid.amount_paise.desc()).limit(1)
+    top_bid = db.execute(top_stmt).scalar_one_or_none()
+    current_min = listing.starting_price_paise if not top_bid else top_bid.amount_paise + listing.min_bid_increment_paise
+
+    if ceiling_paise < current_min:
+        raise ValueError(f"Proxy ceiling must be at least the next minimum bid of ₹{paise_to_rupees(current_min):,.2f}")
+
+    existing = db.execute(
+        select(AutoBidLimit).where(
+            AutoBidLimit.user_id == user.id,
+            AutoBidLimit.listing_id == listing_id,
+        )
+    ).scalar_one_or_none()
+
+    if existing:
+        existing.max_ceiling_paise = ceiling_paise
+        existing.is_active = True
+        limit_obj = existing
+    else:
+        limit_obj = AutoBidLimit(
+            user_id=user.id,
+            listing_id=listing_id,
+            max_ceiling_paise=ceiling_paise,
+            is_active=True,
+        )
+        db.add(limit_obj)
+
+    db.commit()
+    db.refresh(limit_obj)
+
+    # Immediately evaluate if proxy should place an opening/advancing bid
+    _evaluate_proxy_bids(db, listing_id, current_bidder_id=None)
+
+    return {
+        "listing_id": listing_id,
+        "max_ceiling": paise_to_rupees(limit_obj.max_ceiling_paise),
+        "is_active": limit_obj.is_active,
+    }
+
+
+def get_proxy_limit(db: Session, listing_id: int, user_id: int) -> Optional[dict]:
+    limit_obj = db.execute(
+        select(AutoBidLimit).where(
+            AutoBidLimit.user_id == user_id,
+            AutoBidLimit.listing_id == listing_id,
+            AutoBidLimit.is_active == True,
+        )
+    ).scalar_one_or_none()
+
+    if not limit_obj:
+        return None
+
+    return {
+        "listing_id": listing_id,
+        "max_ceiling": paise_to_rupees(limit_obj.max_ceiling_paise),
+        "is_active": limit_obj.is_active,
+    }
+
 

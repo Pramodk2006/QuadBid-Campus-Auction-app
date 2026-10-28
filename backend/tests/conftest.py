@@ -21,6 +21,7 @@ from app.api.auth import get_db as auth_get_db
 from app.api.bids import get_db as bids_get_db
 from app.api.sales import get_db as sales_get_db
 from app.api.questions import get_db as questions_get_db
+from app.api.watchlist import get_db as watchlist_get_db
 from app.core.security import _get_db_for_auth
 
 # Separate test database — never touches the dev DB
@@ -61,6 +62,7 @@ def client():
     app.dependency_overrides[bids_get_db] = override_get_db
     app.dependency_overrides[sales_get_db] = override_get_db
     app.dependency_overrides[questions_get_db] = override_get_db
+    app.dependency_overrides[watchlist_get_db] = override_get_db
     app.dependency_overrides[_get_db_for_auth] = override_get_db
 
     with TestClient(app) as c:
@@ -80,6 +82,7 @@ def _make_client_with_overrides():
     app.dependency_overrides[bids_get_db] = override_get_db
     app.dependency_overrides[sales_get_db] = override_get_db
     app.dependency_overrides[questions_get_db] = override_get_db
+    app.dependency_overrides[watchlist_get_db] = override_get_db
     app.dependency_overrides[_get_db_for_auth] = override_get_db
     return TestClient(app)
 

@@ -48,3 +48,4 @@ def test_listing_without_photos_rejected(auth_client):
     response = auth_client.post("/api/listings", json=payload)
     assert response.status_code == 422
     assert "photos" in response.text
+

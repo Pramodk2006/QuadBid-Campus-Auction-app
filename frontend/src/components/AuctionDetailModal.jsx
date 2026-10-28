@@ -74,6 +74,16 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
       if (!proxyCeiling && leaderData?.current_price) {
         setProxyCeiling((leaderData.current_price + (listingData.min_bid_increment * 6)).toString());
       }
+
+      // Check existing proxy limit for logged in student
+      if (isAuthenticated) {
+        api.getProxyBid(listingId).then((proxy) => {
+          if (proxy && proxy.max_ceiling) {
+            setProxyCeiling(proxy.max_ceiling.toString());
+            setProxyEnabled(proxy.is_active);
+          }
+        }).catch(() => {});
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -261,6 +271,28 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
     try {
       await api.confirmHandover(listingId, inputCode.trim().toUpperCase());
       await loadData();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleSetProxy = async () => {
+    setError(null);
+    setSuccessMsg(null);
+    if (!isAuthenticated) {
+      setError('Please sign in to configure auto-proxy bidding.');
+      return;
+    }
+    const ceilingNum = parseFloat(proxyCeiling);
+    if (isNaN(ceilingNum) || ceilingNum <= 0) {
+      setError('Please enter a valid ceiling amount.');
+      return;
+    }
+    try {
+      const res = await api.setProxyBid(listingId, ceilingNum);
+      setSuccessMsg(`✓ Auto-proxy bidding active up to ₹${res.max_ceiling.toLocaleString('en-IN')}. Engine will counter-bid automatically.`);
+      await loadData();
+      if (onBidPlaced) onBidPlaced();
     } catch (err) {
       setError(err.message);
     }
@@ -1001,10 +1033,10 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
                   </div>
                   <button
                     type="button"
-                    onClick={() => alert(`Proxy bidding ceiling updated to ₹${parseFloat(proxyCeiling || 0).toLocaleString('en-IN')}. Engine will bid automatically on outbids.`)}
-                    className="bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 text-xs font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
+                    onClick={handleSetProxy}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition-colors whitespace-nowrap cursor-pointer shadow-xs"
                   >
-                    Update Limit
+                    Set Proxy Ceiling
                   </button>
                 </div>
               </div>

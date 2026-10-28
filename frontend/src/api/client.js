@@ -197,5 +197,40 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ answer_text: answerText }),
     }),
+
+  // Watchlist & Saved Searches (Phase 7)
+  getWatchlist: () => request('/watchlist'),
+
+  addToWatchlist: (listingId) =>
+    request(`/watchlist/${listingId}`, {
+      method: 'POST',
+    }),
+
+  removeFromWatchlist: (listingId) =>
+    request(`/watchlist/${listingId}`, {
+      method: 'DELETE',
+    }),
+
+  getSavedSearches: () => request('/saved-searches'),
+
+  createSavedSearch: (payload) =>
+    request('/saved-searches', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteSavedSearch: (id) =>
+    request(`/saved-searches/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // Automatic Proxy Bidding (Phase 8)
+  getProxyBid: (listingId) => request(`/listings/${listingId}/proxy-bid`),
+
+  setProxyBid: (listingId, maxCeiling) =>
+    request(`/listings/${listingId}/proxy-bid`, {
+      method: 'POST',
+      body: JSON.stringify({ max_ceiling: maxCeiling }),
+    }),
 };
 

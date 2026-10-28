@@ -6,6 +6,9 @@ import LiveBidStream from './components/LiveBidStream';
 import AuctionDetailModal from './components/AuctionDetailModal';
 import CreateListingModal from './components/CreateListingModal';
 import AuthModal from './components/AuthModal';
+import WatchlistModal from './components/WatchlistModal';
+import AiConciergeModal from './components/AiConciergeModal';
+import SellerHubModal from './components/SellerHubModal';
 import { api } from './api/client';
 import { useAuth } from './context/AuthContext';
 import { getWebSocketUrl } from './utils/ws';
@@ -32,6 +35,18 @@ export default function App() {
   const [selectedListingId, setSelectedListingId] = useState(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isWatchlistOpen, setIsWatchlistOpen] = useState(false);
+  const [isAiConciergeOpen, setIsAiConciergeOpen] = useState(false);
+  const [isSellerHubOpen, setIsSellerHubOpen] = useState(false);
+  const [watchlistCount, setWatchlistCount] = useState(0);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      api.getWatchlist().then((res) => setWatchlistCount(res.length)).catch(() => {});
+    } else {
+      setWatchlistCount(0);
+    }
+  }, [isAuthenticated]);
 
   const fetchListings = async () => {
     try {
@@ -141,21 +156,19 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans antialiased flex flex-col selection:bg-indigo-600 selection:text-white">
-      {/* Top Header & Sub-Nav */}
+      {/* Top Header */}
       <Navbar
         onOpenCreate={() => {
           if (!isAuthenticated) setIsAuthOpen(true);
           else setIsCreateOpen(true);
         }}
         onOpenAuth={() => setIsAuthOpen(true)}
+        onOpenWatchlist={() => setIsWatchlistOpen(true)}
+        onOpenAiConcierge={() => setIsAiConciergeOpen(true)}
+        onOpenSellerHub={() => setIsSellerHubOpen(true)}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        activeTab={activeTab}
-        setActiveTab={(tab) => {
-          setActiveTab(tab);
-          if (tab === 'live') setLotStatusFilter('live');
-          else if (tab === 'escrow') setLotStatusFilter('closed');
-        }}
+        watchlistCount={watchlistCount}
       />
 
       {/* Main Content Viewport */}
@@ -193,9 +206,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => {
-                  alert('AI Concierge: Natural language search ("find me a cycle under ₹2000") is available in the AI tab.');
-                }}
+                onClick={() => setIsAiConciergeOpen(true)}
                 className="px-5 py-3 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 font-semibold text-sm flex items-center gap-2 transition-all cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[18px] text-indigo-600">smart_toy</span>
@@ -478,6 +489,34 @@ export default function App() {
       )}
 
       {isAuthOpen && <AuthModal onClose={() => setIsAuthOpen(false)} />}
+
+      {isWatchlistOpen && (
+        <WatchlistModal
+          onClose={() => setIsWatchlistOpen(false)}
+          onSelectLot={(id) => setSelectedListingId(id)}
+          onWatchlistChange={(count) => setWatchlistCount(count)}
+        />
+      )}
+
+      {isAiConciergeOpen && (
+        <AiConciergeModal
+          onClose={() => setIsAiConciergeOpen(false)}
+          listings={listings}
+          onSelectLot={(id) => setSelectedListingId(id)}
+        />
+      )}
+
+      {isSellerHubOpen && (
+        <SellerHubModal
+          onClose={() => setIsSellerHubOpen(false)}
+          listings={listings}
+          onSelectLot={(id) => setSelectedListingId(id)}
+          onOpenCreate={() => {
+            if (!isAuthenticated) setIsAuthOpen(true);
+            else setIsCreateOpen(true);
+          }}
+        />
+      )}
     </div>
   );
 }

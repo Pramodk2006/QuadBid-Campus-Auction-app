@@ -80,3 +80,4 @@ async def upload_image(
         "filename": unique_filename,
         "size_bytes": len(content),
     }
+

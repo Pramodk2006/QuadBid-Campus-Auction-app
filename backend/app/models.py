@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (
-    JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, func
+    JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -283,5 +283,61 @@ class Question(Base):
 
     def __repr__(self) -> str:
         return f"<Question id={self.id} listing={self.listing_id} asker={self.asker_id} answered={self.answer_text is not None}>"
+
+
+# ---------------------------------------------------------------------------
+# WatchlistItem (Phase 7 — Saved Lots)
+# ---------------------------------------------------------------------------
+
+class WatchlistItem(Base):
+    __tablename__ = "watchlist_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"), index=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (UniqueConstraint("user_id", "listing_id", name="uq_user_listing_watchlist"),)
+
+    user: Mapped["User"] = relationship("User")
+    listing: Mapped["Listing"] = relationship("Listing")
+
+
+# ---------------------------------------------------------------------------
+# SavedSearch (Phase 7 — Campus Alert Queries)
+# ---------------------------------------------------------------------------
+
+class SavedSearch(Base):
+    __tablename__ = "saved_searches"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    query: Mapped[str] = mapped_column(String(120), nullable=False)
+    category: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    max_price_paise: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    user: Mapped["User"] = relationship("User")
+
+
+# ---------------------------------------------------------------------------
+# AutoBidLimit (Phase 8 — Automatic Proxy Bidding)
+# ---------------------------------------------------------------------------
+
+class AutoBidLimit(Base):
+    __tablename__ = "auto_bid_limits"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    listing_id: Mapped[int] = mapped_column(ForeignKey("listings.id", ondelete="CASCADE"), index=True, nullable=False)
+    max_ceiling_paise: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (UniqueConstraint("user_id", "listing_id", name="uq_user_listing_autobid"),)
+
+    user: Mapped["User"] = relationship("User")
+    listing: Mapped["Listing"] = relationship("Listing")
+
 
 

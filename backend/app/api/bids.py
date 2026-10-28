@@ -16,7 +16,7 @@ from ..core.security import get_current_user
 from ..core.websocket import manager
 from ..database import SessionLocal
 from ..models import User, Bid
-from ..schemas import AuctionLeader, BidCreate, BidPlacementResult, BidRead
+from ..schemas import AuctionLeader, BidCreate, BidPlacementResult, BidRead, AutoBidSet, AutoBidRead
 from ..services import bidding_service
 
 router = APIRouter(prefix="/api/listings/{listing_id}", tags=["bids"])
@@ -118,4 +118,36 @@ def get_auction_leader(listing_id: int, db: Session = Depends(get_db)):
         return bidding_service.get_auction_leader(db, listing_id=listing_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+
+@router.post("/proxy-bid", response_model=AutoBidRead, status_code=status.HTTP_201_CREATED)
+def set_proxy_bid(
+    listing_id: int,
+    payload: AutoBidSet,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Set an automatic proxy bidding ceiling (Phase 8).
+    The engine will auto-bid minimum increments on your behalf up to this ceiling.
+    """
+    try:
+        return bidding_service.set_proxy_limit(
+            db, listing_id=listing_id, user=current_user, max_ceiling_rupees=payload.max_ceiling
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+
+@router.get("/proxy-bid", response_model=AutoBidRead | None)
+def get_proxy_bid(
+    listing_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Fetch student's active proxy bid ceiling on this lot."""
+    return bidding_service.get_proxy_limit(db, listing_id=listing_id, user_id=current_user.id)
+
 
