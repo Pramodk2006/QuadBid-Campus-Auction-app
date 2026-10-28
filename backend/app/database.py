@@ -15,6 +15,7 @@ Why SQLite for dev?
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.pool import NullPool
 from .core.config import settings
 
 # In production with Supabase, DATABASE_URL is injected via environment variables.
@@ -23,14 +24,33 @@ database_url = settings.DATABASE_URL
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
+# Supabase Pooler Guardrail:
+# Port 5432 is Session Mode (limited to 15 concurrent clients, fails with EMAXCONNSESSION).
+# Port 6543 is Transaction Mode (supports high-throughput pool multiplexing).
+is_supabase_pooler = "pooler.supabase.com" in database_url
+if is_supabase_pooler and ":5432" in database_url:
+    database_url = database_url.replace(":5432", ":6543", 1)
+
 connect_args = {}
+engine_kwargs = {
+    "pool_pre_ping": True,
+}
+
 if database_url.startswith("sqlite"):
     connect_args["check_same_thread"] = False
+elif is_supabase_pooler or ":6543" in database_url:
+    # Use NullPool when connected to Supabase transaction pooler (port 6543)
+    # so connections are released back to PgBouncer immediately without client-side pooling conflicts
+    engine_kwargs["poolclass"] = NullPool
+else:
+    engine_kwargs["pool_size"] = 5
+    engine_kwargs["max_overflow"] = 0
+    engine_kwargs["pool_recycle"] = 300
 
 engine = create_engine(
     database_url,
     connect_args=connect_args,
-    pool_pre_ping=True,
+    **engine_kwargs,
 )
 
 # expire_on_commit=False: keep attributes accessible after session.commit()
