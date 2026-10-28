@@ -11,8 +11,12 @@ export default function SellerHubModal({
   const { user, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState('seller'); // 'seller' | 'bids'
 
-  const myListings = listings.filter((l) => user && l.seller_id === user.id);
-  const otherListings = listings.filter((l) => !user || l.seller_id !== user.id);
+  const myListings = listings.filter(
+    (l) => user && (l.seller_id === user.id || (user.display_name && l.seller_display_name === user.display_name))
+  );
+  const otherListings = listings.filter(
+    (l) => !user || (l.seller_id !== user.id && l.seller_display_name !== user.display_name)
+  );
 
   return (
     <div

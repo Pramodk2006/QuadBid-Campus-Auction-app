@@ -236,6 +236,7 @@ class ListingListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    seller_id: int
     seller_display_name: str
     title: str
     category: str
