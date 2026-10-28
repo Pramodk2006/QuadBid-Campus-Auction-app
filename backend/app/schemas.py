@@ -113,7 +113,7 @@ class ListingCreate(BaseModel):
     category: CATEGORIES
     description: str = Field(min_length=10, max_length=3000)
     condition: CONDITIONS
-    photos: list[str] = Field(default_factory=list, max_length=6)
+    photos: list[str] = Field(min_length=1, max_length=6, description="At least 1 item photo is mandatory, up to 6")
     starting_price: float = Field(ge=1.0, le=1_000_000.0, description="Starting price in ₹")
     min_bid_increment: float = Field(gt=0.0, le=100_000.0, description="Minimum increment in ₹")
     closes_at: datetime = Field(description="Closing timestamp (timezone required)")

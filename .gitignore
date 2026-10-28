@@ -48,3 +48,7 @@ htmlcov/
 *.log
 session.md
 
+# Uploaded inspection media
+backend/uploads/*
+!backend/uploads/.gitkeep
+

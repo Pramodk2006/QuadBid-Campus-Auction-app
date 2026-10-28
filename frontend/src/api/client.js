@@ -80,6 +80,37 @@ export const api = {
       body: JSON.stringify(profileData),
     }),
 
+  // File Upload
+  uploadImage: async (file) => {
+    const token = getAuthToken();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const headers = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    const isJson = response.headers.get('content-type')?.includes('application/json');
+    const data = isJson ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      let errorMsg = response.statusText || 'Upload failed';
+      if (data?.detail) {
+        if (typeof data.detail === 'string') errorMsg = data.detail;
+        else errorMsg = JSON.stringify(data.detail);
+      }
+      throw new Error(errorMsg);
+    }
+
+    return data;
+  },
+
   // Listings
   getListings: (params = {}) => {
     const query = new URLSearchParams();

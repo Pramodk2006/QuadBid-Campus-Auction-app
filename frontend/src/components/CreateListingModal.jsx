@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 
 export default function CreateListingModal({ onClose, onCreated }) {
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
+  const fileInputRef = useRef(null);
 
   const defaultClose = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const localIso = new Date(defaultClose.getTime() - defaultClose.getTimezoneOffset() * 60000)
@@ -20,8 +22,61 @@ export default function CreateListingModal({ onClose, onCreated }) {
     starting_price: '500',
     min_bid_increment: '20',
     closes_at: localIso,
-    photoUrl: '',
   });
+
+  const [photos, setPhotos] = useState([]);
+  const [manualUrl, setManualUrl] = useState('');
+  const [showManualUrl, setShowManualUrl] = useState(false);
+
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    if (photos.length + files.length > 6) {
+      setError('You can upload a maximum of 6 photos per item');
+      return;
+    }
+
+    setError(null);
+    setUploading(true);
+
+    try {
+      const uploadPromises = files.map(async (file) => {
+        if (!file.type.startsWith('image/')) {
+          throw new Error(`File "${file.name}" is not a valid image. Only JPEG, PNG, WebP allowed.`);
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error(`File "${file.name}" exceeds 10MB limit.`);
+        }
+        const res = await api.uploadImage(file);
+        return res.url;
+      });
+
+      const uploadedUrls = await Promise.all(uploadPromises);
+      setPhotos((prev) => [...prev, ...uploadedUrls]);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleAddManualUrl = (e) => {
+    e.preventDefault();
+    if (!manualUrl.trim()) return;
+    if (photos.length >= 6) {
+      setError('Maximum 6 photos allowed');
+      return;
+    }
+    setPhotos([...photos, manualUrl.trim()]);
+    setManualUrl('');
+    setError(null);
+  };
+
+  const handleRemovePhoto = (index) => {
+    setPhotos(photos.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,6 +88,12 @@ export default function CreateListingModal({ onClose, onCreated }) {
     }
     if (formData.description.trim().length < 10) {
       setError('Description must be at least 10 characters');
+      return;
+    }
+
+    // MANDATORY IMAGE CHECK
+    if (photos.length === 0) {
+      setError('At least one item inspection image from your device is mandatory');
       return;
     }
 
@@ -56,7 +117,6 @@ export default function CreateListingModal({ onClose, onCreated }) {
 
     setSubmitting(true);
     try {
-      const photos = formData.photoUrl.trim() ? [formData.photoUrl.trim()] : [];
       await api.createListing({
         title: formData.title.trim(),
         category: formData.category,
@@ -79,12 +139,12 @@ export default function CreateListingModal({ onClose, onCreated }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 overflow-y-auto">
-      <div className="relative bg-white text-slate-800 w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+      <div className="relative bg-white text-slate-800 w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col animate-fadeIn">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
           <div>
             <h2 className="text-base font-bold text-slate-900 font-headline">List Item for Campus Handover</h2>
-            <p className="text-xs text-slate-500">Posting as {user?.display_name}</p>
+            <p className="text-xs text-slate-500">Posting as {user?.display_name || 'Verified Student'}</p>
           </div>
           <button
             onClick={onClose}
@@ -125,7 +185,7 @@ export default function CreateListingModal({ onClose, onCreated }) {
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-900 focus:border-indigo-600 focus:bg-white focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-900 focus:border-indigo-600 focus:bg-white focus:outline-none"
               >
                 <option value="cycle">Cycle & Mobility</option>
                 <option value="calculator">Scientific Calculator</option>
@@ -142,7 +202,7 @@ export default function CreateListingModal({ onClose, onCreated }) {
               <select
                 value={formData.condition}
                 onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
-                className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-900 focus:border-indigo-600 focus:bg-white focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-900 focus:border-indigo-600 focus:bg-white focus:outline-none"
               >
                 <option value="new">Brand New</option>
                 <option value="like_new">Like New</option>
@@ -150,6 +210,117 @@ export default function CreateListingModal({ onClose, onCreated }) {
                 <option value="fair">Fair (Minor wear)</option>
                 <option value="needs_repair">Needs Repair</option>
               </select>
+            </div>
+          </div>
+
+          {/* DEVICE IMAGE UPLOAD SECTION (MANDATORY) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Inspection Photos * <span className="text-rose-600 font-extrabold">(Mandatory)</span>
+              </label>
+              <span className="text-[11px] text-slate-500 font-mono">
+                {photos.length}/6 uploaded
+              </span>
+            </div>
+
+            {/* Dropzone Container */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
+                photos.length === 0
+                  ? 'border-indigo-300 bg-indigo-50/40 hover:bg-indigo-50/70 hover:border-indigo-500'
+                  : 'border-slate-200 bg-slate-50/60 hover:bg-slate-100 hover:border-slate-300'
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              <div className="flex flex-col items-center gap-1.5 pointer-events-none">
+                <div className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-indigo-600 shadow-xs">
+                  <span className="material-symbols-outlined text-xl">
+                    {uploading ? 'sync' : 'add_photo_alternate'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-slate-800">
+                    {uploading ? 'Uploading inspection photo...' : 'Click to select photo from device'}
+                  </span>
+                  <p className="text-[11px] text-slate-500">
+                    PNG, JPG, WebP up to 10MB • At least 1 photo required
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Uploaded Photo Previews */}
+            {photos.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 pt-2">
+                {photos.map((url, idx) => (
+                  <div
+                    key={idx}
+                    className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 bg-slate-100 group shadow-xs"
+                  >
+                    <img
+                      src={url}
+                      alt={`Photo ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {idx === 0 && (
+                      <span className="absolute bottom-1 left-1 bg-slate-900/80 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                        Cover
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemovePhoto(idx);
+                      }}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-slate-900/80 hover:bg-rose-600 text-white flex items-center justify-center transition-colors cursor-pointer"
+                      title="Remove Photo"
+                    >
+                      <span className="material-symbols-outlined text-[13px]">close</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Optional Fallback Link URL Toggle */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setShowManualUrl(!showManualUrl)}
+                className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 cursor-pointer"
+              >
+                <span>{showManualUrl ? '− Hide external image URL input' : '+ Or paste image URL'}</span>
+              </button>
+
+              {showManualUrl && (
+                <div className="mt-2 flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="https://images.unsplash.com/photo-..."
+                    value={manualUrl}
+                    onChange={(e) => setManualUrl(e.target.value)}
+                    className="flex-1 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-900 focus:border-indigo-600 focus:bg-white focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddManualUrl}
+                    className="px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-900 transition-colors cursor-pointer"
+                  >
+                    Add URL
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -187,7 +358,7 @@ export default function CreateListingModal({ onClose, onCreated }) {
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Auction Closing Date & Time (UTC) *
+              Auction Closing Date & Time *
             </label>
             <input
               type="datetime-local"
@@ -197,21 +368,8 @@ export default function CreateListingModal({ onClose, onCreated }) {
               className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-900 font-mono focus:border-indigo-600 focus:bg-white focus:outline-none"
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              Anti-sniping is enabled automatically: valid bids in the last 30s extend by +60s.
+              Anti-sniping is enabled automatically: valid bids in the last 30s extend the auction by +60s.
             </p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-              Item Photo URL
-            </label>
-            <input
-              type="url"
-              placeholder="https://images.unsplash.com/photo-..."
-              value={formData.photoUrl}
-              onChange={(e) => setFormData({ ...formData, photoUrl: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-900 focus:border-indigo-600 focus:bg-white focus:outline-none"
-            />
           </div>
 
           <div>
@@ -239,10 +397,20 @@ export default function CreateListingModal({ onClose, onCreated }) {
             </button>
             <button
               type="submit"
-              disabled={submitting}
-              className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50"
+              disabled={submitting || uploading}
+              className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
             >
-              {submitting ? 'Publishing...' : 'Publish Campus Lot'}
+              {submitting ? (
+                <>
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Publishing...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[16px]">publish</span>
+                  <span>Publish Campus Lot</span>
+                </>
+              )}
             </button>
           </div>
         </form>

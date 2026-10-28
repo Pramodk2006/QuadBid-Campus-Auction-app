@@ -164,7 +164,7 @@ VALID_LISTING = {
     "category": "calculator",
     "description": "Working Casio fx-991ES with protective cover. Display is clear.",
     "condition": "good",
-    "photos": [],
+    "photos": ["https://images.unsplash.com/photo-1594980596870-8aa52a78d8cd?auto=format&fit=crop&w=800&q=80"],
     "starting_price": 250.0,
     "min_bid_increment": 20.0,
     "closes_at": FUTURE_DATE,
