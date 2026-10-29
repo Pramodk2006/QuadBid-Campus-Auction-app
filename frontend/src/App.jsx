@@ -146,7 +146,9 @@ export default function App() {
 
       socket.onmessage = (event) => {
         try {
+          if (!event.data || event.data === 'pong' || event.data === 'ping') return;
           const data = JSON.parse(event.data);
+          if (data.type === 'PONG') return;
           if (data.type === 'GLOBAL_BID_TICKER') {
             setRecentBids((prev) => [
               {

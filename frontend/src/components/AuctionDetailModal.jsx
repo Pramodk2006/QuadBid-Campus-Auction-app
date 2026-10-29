@@ -113,7 +113,9 @@ export default function AuctionDetailModal({ listingId, onClose, onBidPlaced }) 
 
     socket.onmessage = (event) => {
       try {
+        if (!event.data || event.data === 'pong' || event.data === 'ping') return;
         const data = JSON.parse(event.data);
+        if (data.type === 'PONG') return;
         if (data.type === 'NEW_BID') {
           // Prepend new bid in real time
           setBids((prev) => [data.bid, ...prev.filter((b) => b.id !== data.bid.id)]);
